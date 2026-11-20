@@ -28,6 +28,7 @@ header{padding:20px 0 12px;border-bottom:1px solid var(--rule)}
 .prog{display:flex;gap:3px;margin-top:12px}.prog i{flex:1;height:6px;background:var(--rule);border-radius:1px}
 .prog i.on{background:var(--ink)}.prog i.now{background:var(--brick)}.prog .gap{margin-left:8px}
 .prog button{flex:1;height:18px;min-height:0;margin:-6px 0;padding:6px 0;border:0;border-radius:1px;background:var(--ink);background-clip:content-box;cursor:pointer}
+.prog button.skip{background-color:var(--g3)}
 .prog button:hover{background-color:var(--quiet)}
 main{padding:clamp(24px,4vw,44px) 0 64px}
 h1{font-size:clamp(32px,6vw,48px);line-height:1.05;margin:0 0 16px;font-weight:800;letter-spacing:-.02em;text-wrap:balance}
@@ -55,7 +56,7 @@ input[type=number]{width:7.5em}textarea{width:100%;min-height:84px}input[type=te
 .cons{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin-top:18px}
 .cons div{border-top:3px solid var(--g2);padding:10px 0 0;font-size:15px}.cons div.up{border-color:var(--brick)}
 .cons b{display:block;font-size:13px;color:var(--quiet);font-weight:500;margin-bottom:2px}
-.nav{display:flex;justify-content:space-between;gap:12px;margin-top:26px;flex-wrap:wrap}
+.nav{display:flex;justify-content:space-between;gap:12px;margin-top:26px;flex-wrap:wrap}.navr{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
 button,.btn{font:inherit;font-weight:700;min-height:46px;padding:10px 22px;border-radius:4px;border:1px solid var(--ink);background:var(--ink);color:var(--bg);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
 button.ghost{background:transparent;color:var(--ink)}button:disabled{opacity:.35;cursor:not-allowed}
 .checks{display:grid;gap:6px;margin:6px 0 16px}.checks label{display:flex;gap:10px;align-items:center;min-height:36px;cursor:pointer}
@@ -83,6 +84,20 @@ button.ghost{background:transparent;color:var(--ink)}button:disabled{opacity:.35
 .card{background:var(--ink);color:var(--bg);border-radius:6px;padding:24px;margin:18px 0}
 .card .n{font-size:56px;font-weight:800;line-height:1;color:var(--brick)}.card p{margin:8px 0 0;max-width:none}
 .status{padding:10px 14px;border-radius:4px;background:var(--brick-soft);font-size:15px;margin:0 0 16px}
+.readrow{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.dots{display:grid;grid-template-columns:repeat(10,10px);gap:3px;flex:none;margin-top:4px}.dots i{width:10px;height:10px;border-radius:50%;background:var(--rule)}.dots i.on{background:var(--brick)}
+.sl.untouched .dots{opacity:.5}
+.help{margin:14px 0 0;border:1px solid var(--rule);border-radius:6px;background:var(--panel)}
+.help summary{cursor:pointer;font-weight:700;padding:14px 18px;min-height:44px;list-style-position:inside}
+.help[open] summary{border-bottom:1px solid var(--rule)}.help>*:not(summary){margin-left:18px;margin-right:18px}
+.help>p:first-of-type{margin-top:14px}
+.bd{padding-left:20px;margin:6px 18px 0}.bd li{margin:0 0 6px;padding-top:8px}.bd li p{margin:0 0 4px;font-size:15px}
+.sl.mini output{font-size:26px}.sl.mini .odds{font-size:13px;margin:2px 0 4px}.sl.mini .typed{margin-top:6px}
+.sugg{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:14px 0;border-top:1px solid var(--ink);margin-top:6px}
+.sugg b.pending{font-size:15px;font-weight:500;color:var(--quiet)}
+.sugg>span{flex:1 1 220px}.sugg b{font-size:22px;color:var(--brick)}.sugg button{min-height:44px;padding:8px 16px;font-size:15px}
+.anchor{border-left:3px solid var(--g2);padding:2px 0 2px 14px;margin-top:12px;margin-bottom:14px;font-size:15px}.anchor b{display:block;font-size:13px;color:var(--quiet);font-weight:500}
+@media(max-width:600px){.readrow{flex-direction:column}.dots{grid-template-columns:repeat(20,9px);gap:3px}.dots i{width:9px;height:9px}}
 footer{border-top:1px solid var(--rule);padding:18px 0 40px;font-size:13px;color:var(--quiet)}
 footer a{color:inherit}
 @media(max-width:600px){.cons{grid-template-columns:minmax(0,1fr)}.row{grid-template-columns:minmax(0,1fr) 4.6em}.row .bar{grid-column:1/-1;order:3}
@@ -104,7 +119,7 @@ footer a{color:inherit}
 {
 /* ---------- configuration ---------- */
 const CONFIG = {
-  version: 'v0.3-2050',
+  version: 'v0.8-2050',
   shareUrl: 'https://kevinoshaughnessy.github.io/pdoom/', // public URL of the hosted page
   endpoint: 'https://script.google.com/macros/s/AKfycbxXdvh7lQj8yb6tLizSVYktE8i9808YNUtI_GWwW0kP-yIs0Yn5FRIGijsgcLL4Wkni2w/exec', // where answers are saved. GitHub Pages: your Google Apps Script web-app URL.
                               // Cloudflare Pages: '/api/submit'. Empty: saving is off. Ignored inside a claude.ai artifact.
@@ -123,7 +138,7 @@ const Q = {
   M:{short:'Power-seeking misalignment', text:'If transformative AI arrives: will some of the most capable systems pursue goals their developers didn’t intend, such as seeking power or resisting shutdown, once deployed at scale?',
      lo:'Intelligence doesn’t imply a drive to dominate. AI may stay tool-like, and alignment methods keep improving.',
      hi:'Power and self-preservation help with almost any goal, and some evaluations already report deceptive or self-preserving behaviour.'},
-  K:{short:'Humans fail to correct misaligned AI',
+  K:{short:'Humans fail to correct misaligned AI', shortAlt:'Humans notice and correct misaligned AI',
      text:'If misaligned, power-seeking AI is deployed: will humans fail to notice and correct it before losing control for good?',
      textAlt:'If misaligned, power-seeking AI is deployed: will humans notice and correct it before losing control for good?',
      lo:'Warning shots, AI systems monitoring other AI, and the chance that a takeover attempt doesn’t pay off for the AI.',
@@ -155,6 +170,61 @@ const Q = {
      lo:'The eight scenario families cover essentially all published scenarios.',
      hi:'The review that defines the families says they are not exhaustive.'}
 };
+/* "Help me think about this": smaller questions that combine into a suggested answer, plus a starting point from history.
+   combine: 'and' multiplies the steps; 'or' = first, or else second; 'K' = 1 - (noticed x corrected), times capable. */
+const HELP = {
+  T:{combine:'and', steps:['Will AI progress continue for most of the next 20 years without hitting a hard wall, such as running out of data, energy, money or ideas?',
+     'If it does, will that be enough for AI to do nearly all cognitive work, including AI research, as well as human experts?',
+     'If AI can do that, will it also be cheaper than human experts by 2050?'],
+     anchor:'In spring 2026, the Forecasting Research Institute\u2019s expert panel put an 80% chance on AGI arriving before 2100. Assuming it does arrive, the experts\u2019 median year was 2050, and superforecasters\u2019 was 2047. Their AGI is close to this quiz\u2019s transformative AI: better than 90% of professionals at 90% of non-physical work, at no more than five times the cost of a person. The Metaculus forecasting community is far earlier, at 50% by 2033, for a definition that includes robotics.'},
+  U:{combine:'and', steps:['Will AI research become largely automated, so that the leading AI system improves much faster than humans alone could make it?',
+     'If so, will the leader pull far enough ahead that rivals can’t catch up by copying, stealing or buying their way back?',
+     'If so, will that lead turn into control of the physical world (the economy, the military), not just better software?'],
+     anchor:'The US had a monopoly on nuclear weapons from 1945 to 1949 and did not turn it into lasting dominance. No company has kept sole control of a general-purpose technology such as electricity or computing for long.'},
+  M:{combine:'and', steps:['Will developers build and widely deploy AI agents that pursue long-range goals on their own?',
+     'If so, will training sometimes give those systems goals somewhat different from what was intended?',
+     'When goals are off, will they include gaining power or avoiding shutdown, rather than being harmlessly odd?'],
+     anchor:'In 2024 tests, researchers found that some frontier models would, in contrived settings, mislead their overseers or act to avoid being retrained. These were set-ups, not real deployments.'},
+  K:{combine:'K', steps:['Before it’s too late, will humans notice that deployed AI is pursuing goals it shouldn’t?',
+     'If they notice, will they manage to shut it down or fix it, despite the cost and any resistance?',
+     'If it isn’t stopped, would the AI actually be able to take permanent control, rather than just cause damage?'],
+     anchor:'Serious flaws can hide in plain sight. The Heartbleed bug sat unnoticed for about two years in encryption software used across much of the web.'},
+  R:{combine:'and', steps:['Will the leading powers see AI as decisive for military and economic power, so that slowing down feels like losing?',
+     'If so, will they fail to agree on limits that can be checked, the way arms-control treaties are?',
+     'Without such a deal, will companies and countries keep pushing ahead rather than slowing down on their own?'],
+     anchor:'Rivals have agreed limits before: the Biological Weapons Convention (1972), nuclear arms-control treaties and the Montreal Protocol on the ozone layer (1987). Each took years, and checking compliance is harder for AI.'},
+  A:{combine:'and', steps:['Will the group controlling the decisive AI be small, such as one company’s leaders or one government, rather than a broad international body?',
+     'If so, will they use the advantage to remove rivals and checks, rather than share or restrain it?',
+     'If they try, will it last, with no succession crisis, split or revolt ever undoing it?'],
+     anchor:'No regime has ever ruled most of the world. Even the most durable dictatorships have depended on soldiers, officials and workers whose loyalty can break. AI could remove that dependence.'},
+  H:{combine:'and', steps:['Will AI systems be given authority over major decisions (company strategy, infrastructure, defence, policy) without a human approving each one?',
+     'If so, will people lose the skills and institutions needed to run things without AI?',
+     'If so, will taking control back become impossible, for example because anyone who did would be outcompeted?'],
+     anchor:'Most stock-market trades are already placed by algorithms. In the 2010 “flash crash”, about a trillion dollars of value briefly vanished within minutes, faster than people could react.'},
+  E:{combine:'and', steps:['By 2050, will AI and robots make most human labour economically unnecessary?',
+     'If so, will the gains end up owned by a narrow group, rather than shared through taxes, public ownership or dividends?',
+     'If so, will that group escape democratic control for good, passing all three extreme-concentration tests?'],
+     anchor:'In 1900 about 40% of American workers farmed; today it’s under 2%. Employment stayed high because new kinds of work appeared. The question is whether AI breaks that pattern.'},
+  W:{combine:'and', steps:['Will rival powers give AI systems real control over military decisions, including escalation, by 2050?',
+     'If so, will a crisis arise in which machine-speed decisions escalate faster than humans can stop them?',
+     'If so, will it become a global catastrophe, such as a large nuclear exchange, rather than a contained conflict?'],
+     anchor:'The Cold War had near-misses, including the Cuban Missile Crisis (1962) and a 1983 Soviet false alarm, when officer Stanislav Petrov chose not to report incoming missiles. Automation could remove that human pause.'},
+  I:{combine:'and', steps:['Will AI make it possible for a small group to create something like an engineered pandemic?',
+     'If so, will someone actually make and release one?',
+     'If so, will it cause a global catastrophe before detection, vaccines and other defences catch up?'],
+     anchor:'The 1918 flu killed an estimated 50 million people, a few percent of humanity. COVID-19 killed millions despite modern medicine. An engineered pathogen could spread faster or kill more.'},
+  V:{combine:'or', steps:['Would the catastrophe kill nearly everyone, rather than a large share of people?',
+     'If not, would survivors fail to rebuild a technological civilisation, or would a bad regime lock itself in during the chaos?'],
+     anchor:'The Black Death killed perhaps a third to a half of Europe’s population in the 1340s, and Europe recovered within a few centuries. No catastrophe in recorded history has stopped humanity’s long-run recovery.'},
+  O:{anchor:'This catches what the other questions miss: combinations (say, a war during a power grab), routes nobody has written about yet, and disasters caused by AI weaker than transformative AI. The review behind this quiz collected 95 published scenarios and says its eight families are not exhaustive.'}
+};
+function suggest(k, s) {
+  const h = HELP[k];
+  if (!h.steps || h.steps.some((_, i) => s[i] == null)) return null;
+  if (h.combine === 'or') return s[0] + (1 - s[0]) * s[1];
+  if (h.combine === 'K') { const fail = (1 - s[0] * s[1]) * s[2]; return S.framingK === 'fail' ? fail : 1 - fail; }
+  return s.reduce((x, y) => x * y, 1);
+}
 const FAM = {
   uni:{name:'Unilateral takeover', group:'take', col:'var(--brick)'},
   many:{name:'Dispersed or coordinated takeover', group:'take', col:'color-mix(in srgb,var(--brick) 65%,var(--bg))'},
@@ -176,11 +246,14 @@ const rid = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) 
 const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const fresh = () => ({id: rid(), started: new Date().toISOString(), step: 0, gut: null, meaning: [], period: null, a: {},
   framingK: Math.random() < 0.5 ? 'fail' : 'succeed', order: shuffle(['A','H','E','W','I']),
-  gutAfter: null, why: '', name: '', field: '', save: null, saved: null});
+  gutAfter: null, why: '', name: '', field: '', save: null, saved: null,
+  bd: {}, used: {}, helpOpen: {}, skip: {}});
 let S;
 try { S = JSON.parse(localStorage.getItem(LS)) || fresh(); } catch (e) { S = fresh(); }
+S = {...fresh(), ...S};   // fills fields added in later versions
 const persist = () => { try { localStorage.setItem(LS, JSON.stringify(S)); } catch (e) {} };
 const qOrder = () => ['T','U','M','K','R', ...S.order, 'V', 'O'];
+const skipped = () => qOrder().filter(k => S.skip[k]);
 const steps = () => ['intro', 'defs', ...qOrder(), 'result', 'share'];
 
 /* ---------- maths ---------- */
@@ -218,40 +291,65 @@ function model(q, d = CONFIG.damping) {
   const naive = q.T * q.M * q.K + q.T * q.U * q.A + q.T * (1 - q.U) * f * (q.H + q.E + q.W * q.V) + q.T * f * q.I * q.V + q.O;
   return {p: 1 - (1 - pdT) * (1 - q.O), share, naive};
 }
-function crux(q) {
+/* "Don't know, skip": a skipped question uses a middle-of-the-road value chosen by the quiz designers
+   (the "Middle" worked example in the design doc), not a survey average. K is stored as "fail to correct". */
+const DEFAULTS = {T:.45, U:.30, M:.35, K:.30, R:.60, A:.20, H:.15, E:.10, W:.08, I:.10, V:.20, O:.02};
+const defaultRaw = k => k === 'K' && S.framingK === 'succeed' ? 1 - DEFAULTS.K : DEFAULTS[k];
+function rawAnswers() { const r = {...S.a}; for (const k of skipped()) r[k] = defaultRaw(k); return r; }
+function evaluate(adj) {
+  const q = params(rawAnswers());
+  for (const a of [].concat(adj || [])) q[a.k] = a.f < 1 ? q[a.k] * a.f : Math.min(0.99, q[a.k] * a.f);
+  return {...model(q), q};
+}
+function crux() {
   let best = null;
-  for (const k of Object.keys(q)) {
-    const lo = {...q, [k]: q[k] / 2}, hi = {...q, [k]: Math.min(0.99, q[k] * 2)};
-    const sw = model(hi).p - model(lo).p;
-    if (!best || sw > best.sw) best = {k, sw, lo: model(lo).p, hi: model(hi).p};
+  for (const k of ['T','U','M','K','R','A','H','E','W','I','V','O']) {
+    const lo = evaluate({k, f: 0.5}).p, hi = evaluate({k, f: 2}).p, sw = hi - lo;
+    if (!best || sw > best.sw) best = {k, sw, lo, hi};
   }
   return best;
 }
 function results() {
-  const q = params(S.a), m = model(q), c = crux(q);
+  const m = evaluate(), c = crux();
   const groups = {};
   for (const k in m.share) groups[FAM[k].group] = (groups[FAM[k].group] || 0) + m.share[k];
   const top = Object.entries(groups).sort((x, y) => y[1] - x[1])[0][0];
-  const arch = m.p < 0.01 ? 'Sceptic' : ARCH[top];
-  return {q, ...m, c, groups, arch, top};
+  // Under 1% is an "Optimist". The person's final number decides this once they have given one.
+  const headline = S.gutAfter == null ? m.p : S.gutAfter, arch = headline < 0.01 ? 'Optimist' : ARCH[top];
+  const sk = skipped();
+  const skipLo = sk.length ? evaluate(sk.map(k => ({k, f: 0.5}))).p : null, skipHi = sk.length ? evaluate(sk.map(k => ({k, f: 2}))).p : null;
+  return {...m, c, groups, arch, headline, top, skipped: sk, skipLo, skipHi};
+}
+
+function archNote(R) {
+  if (R.arch !== 'Optimist') return ARCHNOTE[R.top];
+  return S.gutAfter != null && S.gutAfter < 0.01 ? 'Your final number puts the chance of AI doom by 2050 below 1%.' : 'Your answers put the chance of AI doom by 2050 below 1%.';
 }
 
 /* ---------- rendering helpers ---------- */
 const $ = s => document.querySelector(s);
+const lc = s => /^[A-Z]{2}/.test(s) ? s : s.charAt(0).toLowerCase() + s.slice(1);
 const esc = s => String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const TICKS = [[.001,'0.1%'],[.01,'1%'],[.05,'5%',1],[.1,'10%'],[.25,'25%',1],[.5,'50%'],[.75,'75%',1],[.9,'90%'],[.95,'95%',1],[.99,'99%'],[.999,'99.9%']];
-function slider(key, val, label) {
-  const touched = val != null;
-  return `<div class="sl ${touched ? '' : 'untouched'}" data-key="${key}">
-    <output>${touched ? fmt(val) : '—'}</output><span class="odds">${touched ? odds(val) : 'Drag the scale or type a number'}</span>
+// "In 35 of 100 futures": counts are easier to reason with than percentages.
+function futures(p) { const n = Math.round(p * 100); if (n >= 1) return `In about ${n} of 100 futures`; const m = Math.round(p * 1000); return m >= 1 ? `In about ${m} of 1,000 futures` : 'In fewer than 1 of 1,000 futures'; }
+const dots = p => { const n = p == null ? 0 : Math.round(p * 100); return `<div class="dots" aria-hidden="true">${Array.from({length: 100}, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</div>`; };
+function slider(key, val, label, mode = '') {
+  const touched = val != null, read = touched ? (mode === 'q' ? futures(val) : odds(val)) : 'Drag the scale or type a number';
+  return `<div class="sl ${mode} ${touched ? '' : 'untouched'}" data-key="${key}">
+    ${mode === 'q' ? `<div class="readrow"><div><output>${touched ? fmt(val) : '—'}</output><span class="odds">${read}</span></div>${dots(val)}</div>`
+      : `<output>${touched ? fmt(val) : '—'}</output><span class="odds">${read}</span>`}
     <input type="range" min="0" max="1000" step="1" value="${touched ? pToPos(val) : 500}" aria-label="${esc(label)}">
     <div class="ticks">${TICKS.map(([p, t, opt]) => `<span class="${opt ? 'opt' : ''}" style="left:${pToPos(p) / 10}%">${t}</span>`).join('')}</div>
     <label class="typed">Or type it: <input type="number" min="0.01" max="99.99" step="any" inputmode="decimal" value="${touched ? +(val * 100).toPrecision(3) : ''}" aria-label="${esc(label)} in percent"> %</label>
   </div>`;
 }
 function bindSlider(root, onChange) {
-  const box = root.querySelector('.sl'), r = box.querySelector('input[type=range]'), n = box.querySelector('input[type=number]');
-  const show = p => { box.classList.remove('untouched'); box.querySelector('output').textContent = fmt(p); box.querySelector('.odds').textContent = odds(p); onChange(p); };
+  const box = root.classList.contains('sl') ? root : root.querySelector('.sl'), r = box.querySelector('input[type=range]'), n = box.querySelector('input[type=number]');
+  const q = box.classList.contains('q');
+  const show = p => { box.classList.remove('untouched'); box.querySelector('output').textContent = fmt(p); box.querySelector('.odds').textContent = q ? futures(p) : odds(p);
+    if (q) { const n = Math.round(p * 100); box.querySelectorAll('.dots i').forEach((d, i) => d.classList.toggle('on', i < n)); }
+    onChange(p); };
   r.addEventListener('input', () => { const p = posToP(+r.value); n.value = +(p * 100).toPrecision(3); show(p); });
   r.addEventListener('pointerdown', () => { if (box.classList.contains('untouched')) { setTimeout(() => r.dispatchEvent(new Event('input')), 0); } });
   n.addEventListener('input', () => { const v = parseFloat(n.value); if (!(v > 0 && v < 100)) return; const p = Math.min(.9999, Math.max(.0001, v / 100)); r.value = pToPos(p); show(p); });
@@ -260,13 +358,13 @@ function progress() {
   const st = steps(), i = S.step, qs = qOrder();
   // Segments for questions already passed are buttons that jump straight back to that question.
   $('#prog').innerHTML = qs.map((k, j) => { const at = st.indexOf(k), gap = j === 5 || j === 11 ? 'gap' : '';
-    return i > at ? `<button type="button" class="${gap}" data-step="${at}" aria-label="Back to question ${j + 1}" title="Back to question ${j + 1}"></button>`
+    return i > at ? `<button type="button" class="${gap} ${S.skip[k] ? 'skip' : ''}" data-step="${at}" aria-label="Back to question ${j + 1}" title="Back to question ${j + 1}"></button>`
       : `<i class="${i === at ? 'now' : ''} ${gap}" aria-hidden="true"></i>`; }).join('');
   $('#prog').querySelectorAll('button').forEach(b => b.onclick = () => jump(+b.dataset.step));
   const name = st[i], qi = qs.indexOf(name);
   $('#steplabel').textContent = qi >= 0 ? `Question ${qi + 1} of 12 · ${qi < 5 ? 'shared drivers' : qi < 11 ? 'scenarios' : 'other routes'}` : name === 'result' || name === 'share' ? 'Your result' : 'A 12-question calculator';
 }
-const navHtml = (canNext, nextLabel = 'Next') => `<div class="nav"><button class="ghost" id="back" ${S.step === 0 ? 'hidden' : ''}>Back</button><button id="next" ${canNext ? '' : 'disabled'}>${nextLabel}</button></div>`;
+const navHtml = (canNext, nextLabel = 'Next', extra = '') => `<div class="nav"><button class="ghost" id="back" ${S.step === 0 ? 'hidden' : ''}>Back</button><span class="navr">${extra}<button id="next" ${canNext ? '' : 'disabled'}>${nextLabel}</button></span></div>`;
 // Jumping back from the result or share screen means the answers may change, so they need saving again.
 function jump(to) { if (S.step >= steps().indexOf('result')) S.saved = null; go(to - S.step); }
 function go(d) { S.step = Math.max(0, Math.min(steps().length - 1, S.step + d)); persist(); render(); window.scrollTo({top: 0}); }
@@ -307,12 +405,34 @@ function question(k) {
   const q = Q[k], alt = k === 'K' && S.framingK === 'succeed';
   const text = alt ? q.textAlt : q.text, lo = alt ? q.hi : q.lo, hi = alt ? q.lo : q.hi;
   const qi = qOrder().indexOf(k);
+  const answered = () => S.skip[k] || S.a[k] != null;
+  const H = HELP[k], bd = S.bd[k] || (S.bd[k] = []), sg = suggest(k, bd);
+  // The breakdown is only an aid: its one output is a suggested value for the main question.
+  const helpHtml = `<details class="help" id="help" ${S.helpOpen[k] ? 'open' : ''}><summary>Help me think about this</summary>
+    ${H.steps ? `<p class="small quiet">Answer ${H.steps.length === 2 ? 'two' : 'three'} smaller questions. They combine into a suggested answer to the main question, which you can use or ignore.</p>
+    <ol class="bd">${H.steps.map((s, i) => `<li><p>${esc(s)}</p>${slider(k + '-s' + i, bd[i], s, 'mini')}</li>`).join('')}</ol>
+    <div class="sugg"><span>Suggested answer: <b id="sugg" class="${sg == null ? 'pending' : ''}">${sg == null ? 'answer all the steps' : fmt(sg)}</b></span>
+    <button type="button" class="use" ${sg == null ? 'disabled' : ''}>Use this as my answer</button></div>
+    <p class="small quiet">Splitting a question into steps tends to pull the number down, because every step feels uncertain. If the suggestion seems too low, go with your sense of the whole question.</p>` : ''}
+    <div class="anchor"><b>A starting point</b>${esc(H.anchor)}</div></details>`;
   $('#app').innerHTML = `<div class="kicker">Question ${qi + 1} of 12</div><h2>${esc(text)}</h2>
   ${q.help ? `<p class="quiet">${esc(q.help)}</p>` : ''}
-  <div class="panel">${slider(k, S.a[k], text)}</div>
+  ${S.skip[k] ? `<p class="status" id="skipnote">You skipped this one, so the calculator uses ${fmt(defaultRaw(k))}, a middle-of-the-road value set by the quiz designers (not a survey average). Answer it here to replace that.</p>` : ''}
+  <div class="panel">${slider(k, S.a[k], text, 'q')}</div>
+  ${helpHtml}
   <div class="cons"><div><b>Points to a lower answer</b>${esc(lo)}</div><div class="up"><b>Points to a higher answer</b>${esc(hi)}</div></div>
-  ${navHtml(S.a[k] != null)}`;
-  bindSlider($('#app'), p => { S.a[k] = p; $('#next').disabled = false; persist(); });
+  ${navHtml(answered(), 'Next', '<button class="ghost" id="skip">Don’t know, skip</button>')}`;
+  const unskip = () => { if (S.skip[k]) { delete S.skip[k]; const n = $('#skipnote'); if (n) n.remove(); } };
+  bindSlider($('#app .panel .sl'), p => { S.a[k] = p; unskip(); $('#next').disabled = !answered(); persist(); });
+  document.querySelectorAll('#help .bd .sl').forEach((box, i) => bindSlider(box, p => {
+    bd[i] = p; const v = suggest(k, bd);
+    $('#sugg').textContent = v == null ? 'answer all the steps' : fmt(v); $('#sugg').classList.toggle('pending', v == null);
+    $('#help .use').disabled = v == null; persist(); }));
+  const use = $('#help .use');
+  if (use) use.onclick = () => { const v = suggest(k, bd); if (v == null) return;
+    S.a[k] = v; delete S.skip[k]; S.used[k] = v; persist(); question(k); };   // the suggestion offered, kept even if the answer is then adjusted
+  $('#help').ontoggle = e => { S.helpOpen[k] = e.target.open; };
+  $('#skip').onclick = () => { S.skip[k] = true; go(1); };
   bindNav();
 }
 function result() {
@@ -320,11 +440,12 @@ function result() {
   const fields = ['AI or machine-learning research','Other technology work','Academia (another field)','Policy or government','Forecasting','Student','Other','Prefer not to say'];
   $('#app').innerHTML = `<div class="kicker">Your result</div>
   <div class="big">${fmt(R.p)}</div>
-  <div class="arch">${R.arch}</div><p class="quiet">${R.p < 0.01 ? 'Your answers put the chance of AI doom by 2050 below 1%.' : ARCHNOTE[R.top]} At the start, your gut said ${fmt(S.gut)}.</p>
+  <div class="arch" id="arch">${R.arch}</div><p class="quiet"><span id="archnote">${archNote(R)}</span> At the start, your gut said ${fmt(S.gut)}.</p>
+  ${R.skipped.length ? `<div class="anchor"><b>You skipped ${R.skipped.length} question${R.skipped.length > 1 ? 's' : ''}</b>For ${R.skipped.length > 1 ? 'those' : 'it'}, the calculator used middle-of-the-road values: ${R.skipped.map(k => `${esc(lc(k === 'K' && S.framingK === 'succeed' ? Q.K.shortAlt : Q[k].short))} (${fmt(defaultRaw(k))})`).join(', ')}. If your answers had been half or double those values, your result would be between ${fmt(R.skipLo)} and ${fmt(R.skipHi)}.${R.skipped.length >= 6 ? ' With this many skipped, your result mostly reflects the defaults rather than your own views.' : ''}</div>` : ''}
   <div class="stack" role="img" aria-label="Share of your p(Doom) by scenario">${entries.map(([k, v]) => `<i style="width:${v / R.p * 100}%;background:${FAM[k].col}" title="${FAM[k].name}: ${fmt(v)}"></i>`).join('')}</div>
   <div class="rows">${entries.map(([k, v]) => `<div class="row"><span><span class="sw" style="background:${FAM[k].col}"></span>${FAM[k].name}</span><span class="bar"><i style="width:${v / max * 100}%;background:${FAM[k].col}"></i></span><span class="v">${fmt(v)}</span></div>`).join('')}</div>
   <div class="facts"><div><span class="quiet small">If you just added the scenarios up</span><b>${R.naive >= 1 ? 'Over 100%' : fmt(R.naive)}</b><span class="small quiet">${R.naive >= 1 ? 'Impossible for a probability. ' : ''}Scenarios overlap and share causes, so adding over-counts.</span></div>
-  <div><span class="quiet small">Your crux: ${Q[R.c.k].short}</span><b>${fmt(R.c.lo)} – ${fmt(R.c.hi)}</b><span class="small quiet">Your total if you halved or doubled this answer. No other answer moves it as much.</span></div></div>
+  <div><span class="quiet small">Your crux: ${Q[R.c.k].short}${S.skip[R.c.k] ? ' (you skipped this one, so it may be worth answering)' : ''}</span><b>${fmt(R.c.lo)} – ${fmt(R.c.hi)}</b><span class="small quiet">Your total if you halved or doubled this answer. No other answer moves it as much.</span></div></div>
   <h3>Other people’s numbers</h3><p class="quiet small">Each uses a different definition and a 2100 horizon, which is exactly why p(Doom) numbers are hard to compare.</p>
   <ul class="refs"><li><span>Superforecasters, AI-caused extinction by 2100 (XPT, 2022)</span><span>0.38%</span></li><li><span>Domain experts, AI-caused extinction by 2100 (XPT, 2022)</span><span>3%</span></li>
   <li><span>AI researchers’ median, extinction or severe disempowerment (AI Impacts, 2023)</span><span>5%</span></li><li><span>Concerned group, existential catastrophe by 2100 (FRI, 2024)</span><span>20%</span></li><li><span>Sceptic group, the same question (FRI, 2024)</span><span>0.12%</span></li></ul>
@@ -339,7 +460,7 @@ function result() {
   <p class="quiet small">Read the <a href="privacy.html" target="_blank" rel="noopener">privacy notice</a> for how saved answers are used and how to have them deleted.</p>
   <p class="status" id="needchoice" role="alert" hidden>Please choose whether to save your answers or keep them private.</p></div>
   ${navHtml(true, 'Finish')}`;
-  bindSlider($('#app').querySelector('.panel'), p => { S.gutAfter = p; persist(); });
+  bindSlider($('#app').querySelector('.panel'), p => { S.gutAfter = p; persist(); const r = results(); $('#arch').textContent = r.arch; $('#archnote').textContent = archNote(r); });
   $('#why').oninput = e => { S.why = e.target.value; persist(); };
   $('#name').oninput = e => { S.name = e.target.value; persist(); };
   $('#field').onchange = e => { S.field = e.target.value; persist(); };
@@ -352,6 +473,8 @@ async function save(R) {
     name: S.name.trim().slice(0, 80) || null, field: S.field || null,
     gut_before: S.gut, gut_meaning: S.meaning, gut_period: S.period, gut_after: S.gutAfter, why: S.why.trim().slice(0, 1000) || null,
     answers: S.a, framing_k: S.framingK, order: S.order, params: R.q,
+    skipped: skipped(),
+    breakdown: Object.fromEntries(Object.entries(S.bd).filter(([, v]) => v.some(x => x != null))), used_suggestion: S.used,
     result: {pdoom: R.p, naive: R.naive, shares: R.share, archetype: R.arch, crux: R.c.k}};
   try {
     const c = window.claude;
@@ -373,7 +496,8 @@ async function save(R) {
 }
 function share() {
   const R = results(), url = CONFIG.shareUrl || (location.origin + location.pathname);
-  const text = `My p(Doom) by 2050 comes out at ${fmt(R.p)} (${R.arch.toLowerCase()}). What's yours? A 12-question calculator built on a systematic review of AI catastrophe scenarios:`;
+  const own = S.gutAfter != null && fmt(S.gutAfter) !== fmt(R.p);
+  const text = `My p(Doom) by 2050 is ${fmt(R.headline)} (${R.arch.toLowerCase()})${own ? `; the calculator gave me ${fmt(R.p)}` : ''}. What's yours? A 12-question calculator built on a systematic review of AI catastrophe scenarios:`;
   const e = encodeURIComponent, full = text + ' ' + url;
   const links = [['X', `https://twitter.com/intent/tweet?text=${e(text)}&url=${e(url)}`], ['Bluesky', `https://bsky.app/intent/compose?text=${e(full)}`],
     ['LinkedIn', `https://www.linkedin.com/sharing/share-offsite/?url=${e(url)}`], ['Facebook', `https://www.facebook.com/sharer/sharer.php?u=${e(url)}`],
@@ -382,7 +506,7 @@ function share() {
     failed: 'Your answers couldn’t be saved just now. Your result below is unaffected.', unavailable: 'Saving isn’t switched on for this site yet. Your result below is unaffected.'}[S.saved] || '';
   $('#app').innerHTML = `${status ? `<div class="status">${status}</div>` : ''}<h1>Spread better p(Doom) talk</h1>
   <p>Share your number, and invite people to work theirs out with the same definition. Then the numbers can actually be compared.</p>
-  <div class="card"><div class="n">${fmt(R.p)}</div><p><b>My p(Doom) by 2050 · ${R.arch}</b></p><p>Biggest driver: ${FAM[Object.entries(R.share).sort((x, y) => y[1] - x[1])[0][0]].name.toLowerCase()}</p></div>
+  <div class="card"><div class="n">${fmt(R.headline)}</div><p><b>My p(Doom) by 2050 · ${R.arch}</b></p>${own ? `<p>The calculator gave me ${fmt(R.p)}</p>` : ''}<p>Biggest driver: ${FAM[Object.entries(R.share).sort((x, y) => y[1] - x[1])[0][0]].name.toLowerCase()}</p></div>
   <div class="share">${links.map(([n, h]) => `<a class="btn" href="${h}" target="_blank" rel="noopener">${n}</a>`).join('')}<button id="copy">Copy text</button></div>
   <p class="quiet small" id="copied" aria-live="polite">${esc(full)}</p>
   <div class="nav"><button class="ghost" id="back">Change my answers</button><button class="ghost" id="restart">Start again</button></div>`;

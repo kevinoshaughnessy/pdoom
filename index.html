@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>p(Doom) by 2050</title>
+<meta name="description" content="Work out your p(Doom) step by step: 12 questions, a Bayesian network over eight AI catastrophe scenarios, and the maths done for you.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+/* VOICE: a sober risk worksheet: calm, exact, a little stark.
+   IDEA: an assessor's form, ruled and numbered, where each answer is an entry in a ledger.
+   PICTURE: the question and its log-odds scale, large; at the end, the result figure and a ruled bar of eight scenarios.
+   COLOUR and TYPE: stone ground, black ink, white panels, brick for the one live mark; Schibsted Grotesk throughout.
+   LAYOUT: one calm column up to 760px, progress rule on top, considerations side by side, stacking on phones. */
+:root{color-scheme:light dark;
+--bg:light-dark(#e7e4df,#171513);--panel:light-dark(#ffffff,#221f1c);--ink:light-dark(#141414,#ece8e2);
+--quiet:light-dark(#5b5753,#a8a29b);--rule:light-dark(#cdc8c1,#3a3531);--brick:light-dark(#c8371e,#e5583c);
+--brick-soft:light-dark(#f3d9d3,#4a2a22);--g1:light-dark(#3d3a37,#d6d0c8);--g2:light-dark(#8a857f,#8f8981);--g3:light-dark(#bdb7b0,#5e5953)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Schibsted Grotesk",system-ui,sans-serif;overflow-x:clip}
+.wrap{max-width:760px;margin:0 auto;padding-inline:max(4vw,16px)}
+header{padding:20px 0 12px;border-bottom:1px solid var(--rule)}
+.brand{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.brand b{font-weight:800;font-size:18px;letter-spacing:-.01em}.brand span{color:var(--quiet);font-size:14px}
+.prog{display:flex;gap:3px;margin-top:12px}.prog i{flex:1;height:6px;background:var(--rule);border-radius:1px}
+.prog i.on{background:var(--ink)}.prog i.now{background:var(--brick)}.prog i.gap{margin-left:8px}
+main{padding:clamp(24px,4vw,44px) 0 64px}
+h1{font-size:clamp(32px,6vw,48px);line-height:1.05;margin:0 0 16px;font-weight:800;letter-spacing:-.02em;text-wrap:balance}
+h2{font-size:clamp(22px,3.6vw,28px);line-height:1.15;margin:0 0 10px;font-weight:700;text-wrap:balance}
+h3{font-size:16px;margin:28px 0 8px}
+p{margin:0 0 14px;max-width:68ch}.quiet{color:var(--quiet)}.small{font-size:14px}
+.kicker{color:var(--quiet);font-size:14px;margin-bottom:8px}
+.panel{background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:clamp(18px,3vw,28px);margin:18px 0}
+.sl output{font-size:clamp(40px,8vw,64px);font-weight:800;line-height:1;letter-spacing:-.03em;display:block;font-variant-numeric:tabular-nums}
+.sl .odds{color:var(--quiet);font-size:15px;min-height:1.5em;display:block;margin:6px 0 14px}
+.sl.untouched output{color:var(--rule)}
+input[type=range]{width:100%;height:44px;background:transparent;-webkit-appearance:none;appearance:none;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:4px;background:var(--ink);border-radius:2px}
+input[type=range]::-moz-range-track{height:4px;background:var(--ink);border-radius:2px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:var(--brick);border:3px solid var(--panel);margin-top:-11px;box-shadow:0 0 0 1px var(--brick)}
+input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--brick);border:3px solid var(--panel)}
+.sl.untouched input::-webkit-slider-thumb{opacity:0}.sl.untouched input::-moz-range-thumb{opacity:0}
+input:focus-visible,button:focus-visible,a:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid var(--brick);outline-offset:2px}
+.ticks{position:relative;height:22px;font-size:12.5px;color:var(--quiet)}
+.ticks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.ticks span::before{content:"";position:absolute;left:50%;top:-8px;width:1px;height:6px;background:var(--quiet)}
+.typed{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:14px;color:var(--quiet);flex-wrap:wrap}
+input[type=number],input[type=text],select,textarea{font:inherit;font-size:16px;color:var(--ink);background:var(--panel);border:1px solid var(--rule);border-radius:4px;padding:9px 10px;min-height:44px}
+input[type=number]{width:7.5em}textarea{width:100%;min-height:84px}input[type=text],select{width:100%;max-width:420px}
+.cons{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin-top:18px}
+.cons div{border-top:3px solid var(--g2);padding:10px 0 0;font-size:15px}.cons div.up{border-color:var(--brick)}
+.cons b{display:block;font-size:13px;color:var(--quiet);font-weight:500;margin-bottom:2px}
+.nav{display:flex;justify-content:space-between;gap:12px;margin-top:26px;flex-wrap:wrap}
+button,.btn{font:inherit;font-weight:700;min-height:46px;padding:10px 22px;border-radius:4px;border:1px solid var(--ink);background:var(--ink);color:var(--bg);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
+button.ghost{background:transparent;color:var(--ink)}button:disabled{opacity:.35;cursor:not-allowed}
+.checks{display:grid;gap:6px;margin:6px 0 16px}.checks label{display:flex;gap:10px;align-items:center;min-height:36px;cursor:pointer}
+.checks input{width:20px;height:20px;accent-color:var(--brick);flex:none}
+.def{border-left:3px solid var(--ink);padding:2px 0 2px 16px;margin:0 0 18px}
+.tests{counter-reset:t;list-style:none;padding:0;margin:8px 0 0}.tests li{counter-increment:t;padding:8px 0 8px 36px;position:relative;border-top:1px solid var(--rule)}
+.tests li::before{content:counter(t);position:absolute;left:0;top:8px;width:24px;height:24px;border-radius:50%;background:var(--ink);color:var(--bg);font-size:13px;font-weight:700;display:grid;place-items:center}
+.big{font-size:clamp(72px,16vw,132px);font-weight:800;line-height:.9;letter-spacing:-.04em;color:var(--brick);font-variant-numeric:tabular-nums}
+.arch{font-size:20px;font-weight:700;margin:10px 0 4px}
+.stack{display:flex;height:34px;border-radius:3px;overflow:hidden;margin:20px 0 6px;background:var(--rule)}
+.stack i{display:block;height:100%}
+.rows{margin:10px 0 0}.row{display:grid;grid-template-columns:minmax(0,13em) minmax(0,1fr) 4.6em;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--rule);font-size:15px}
+.row .bar{height:12px;background:var(--rule);border-radius:2px;overflow:hidden}.row .bar i{display:block;height:100%}
+.row .v{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.sw{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:7px;vertical-align:-1px}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:18px 0}
+.facts div{border-top:1px solid var(--ink);padding-top:8px}.facts b{display:block;font-size:26px;font-weight:800;font-variant-numeric:tabular-nums}
+.refs{list-style:none;padding:0;margin:0}.refs li{display:flex;justify-content:space-between;gap:12px;border-top:1px solid var(--rule);padding:8px 0;font-size:15px}
+.refs li span:last-child{font-weight:700;white-space:nowrap}
+.choice{display:grid;gap:10px;margin:8px 0}.choice label{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--rule);border-radius:4px;padding:12px 14px;cursor:pointer;background:var(--panel)}
+.choice label:has(input:checked){border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.choice input{width:20px;height:20px;margin-top:2px;accent-color:var(--brick);flex:none}.choice small{display:block;color:var(--quiet);font-size:14px}
+.share{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}.share a,.share button{font-size:15px;min-height:44px;padding:9px 16px;background:var(--panel);color:var(--ink);border:1px solid var(--rule)}
+.share a:hover,.share button:hover{border-color:var(--ink)}
+.card{background:var(--ink);color:var(--bg);border-radius:6px;padding:24px;margin:18px 0}
+.card .n{font-size:56px;font-weight:800;line-height:1;color:var(--brick)}.card p{margin:8px 0 0;max-width:none}
+.status{padding:10px 14px;border-radius:4px;background:var(--brick-soft);font-size:15px;margin:0 0 16px}
+footer{border-top:1px solid var(--rule);padding:18px 0 40px;font-size:13px;color:var(--quiet)}
+footer a{color:inherit}
+@media(max-width:600px){.cons{grid-template-columns:minmax(0,1fr)}.row{grid-template-columns:minmax(0,1fr) 4.6em}.row .bar{grid-column:1/-1;order:3}
+.ticks .opt{display:none}}
+@media(prefers-reduced-motion:no-preference){main>*{animation:in .28s ease-out}@keyframes in{from{opacity:0;transform:translateY(6px)}}}
+</style>
+</head>
+<body>
+<header class="wrap">
+  <div class="brand"><b>p(Doom) by 2050</b><span id="steplabel">A 12-question calculator</span></div>
+  <div class="prog" id="prog" aria-hidden="true"></div>
+</header>
+<main class="wrap" id="app" aria-live="polite"></main>
+<footer class="wrap">
+  Built on Save et al. (2026), <a href="https://existentialriskobservatory.org/papers_and_reports/Existential_Risk_Scenarios_from_AI_A_Systematic_Review.pdf">Existential Risk Scenarios from AI: A Systematic Review</a>. The calculator combines your answers with a small Bayesian network; it does not assess the risk itself.
+</footer>
+<script>
+{
+/* ---------- configuration ---------- */
+const CONFIG = {
+  version: 'v0.2-2050',
+  shareUrl: 'https://kevinoshaughnessy.github.io/pdoom/', // public URL of the hosted page
+  endpoint: '',               // where answers are saved. GitHub Pages: your Google Apps Script web-app URL.
+                              // Cloudflare Pages: '/api/submit'. Empty: saving is off. Ignored inside a claude.ai artifact.
+  damping: 0.3                // structural risk in a coordinating world, relative to a racing one
+};
+
+/* ---------- questions ---------- */
+const Q = {
+  T:{short:'Transformative AI by 2050', text:'By 2050, will there be transformative AI?',
+     help:'AI that can do nearly all cognitive work, including AI research, better and more cheaply than human experts.',
+     lo:'AI may behave like a "normal technology": adoption is slow, data, energy and physical bottlenecks bite, and society may choose not to deploy it.',
+     hi:'Capabilities have grown fast and investment is enormous. 24 years is a long time at the current pace.'},
+  U:{short:'One actor gains a decisive advantage', text:'If transformative AI arrives: will one actor (a company, a government or a single AI system) gain a decisive, unchallengeable advantage over everyone else?',
+     lo:'Fast followers, open models and diffusion have so far stopped any single lab pulling away for long.',
+     hi:'AI that speeds up AI research could turn a small lead into an unassailable one, and computing power is concentrated.'},
+  M:{short:'Power-seeking misalignment', text:'If transformative AI arrives: will some of the most capable systems pursue goals their developers didn’t intend, such as seeking power or resisting shutdown, once deployed at scale?',
+     lo:'Intelligence doesn’t imply a drive to dominate. AI may stay tool-like, and alignment methods keep improving.',
+     hi:'Power and self-preservation help with almost any goal, and some evaluations already report deceptive or self-preserving behaviour.'},
+  K:{short:'Humans fail to correct misaligned AI',
+     text:'If misaligned, power-seeking AI is deployed: will humans fail to notice and correct it before losing control for good?',
+     textAlt:'If misaligned, power-seeking AI is deployed: will humans notice and correct it before losing control for good?',
+     lo:'Warning shots, AI systems monitoring other AI, and the chance that a takeover attempt doesn’t pay off for the AI.',
+     hi:'A capable system could hide its goals, act fast, and be too profitable for anyone to switch off.'},
+  R:{short:'Racing persists', text:'If transformative AI arrives: will competition between companies and countries stop anyone slowing, restricting or reversing AI, even once serious risks are visible?',
+     lo:'Nuclear arms control and the ozone treaty show rivals can coordinate once a danger is clear.',
+     hi:'The first-mover advantage is enormous, and each actor fears the others won’t stop.'},
+  A:{short:'Extreme power concentration', text:'If humans hold a decisive AI advantage and the AI obeys them: will it become extreme power concentration by 2050?',
+     help:'Extreme means it passes all three tests. No outside rival: no state, company or coalition could resist or overturn the group. No inside check: elections, courts, a free press, strikes and refusing orders no longer constrain it. No way back: no plausible succession crisis, split, challenge or collapse could end it.',
+     lo:'Institutions, coalitions and the people inside the winning group can still check it.',
+     hi:'AI can replace the soldiers, officials and workers whose refusal has always limited rulers.'},
+  H:{short:'Irreversible handover to AI', text:'In a world with many competing AI developers (assume competition persists): will humans, by 2050, hand so much real decision-making to AI that it can never be taken back?',
+     lo:'People keep vetoes over important decisions, and adoption is slower than capability.',
+     hi:'Organisations that delegate more outcompete those that don’t, and human skills wither.'},
+  E:{short:'Economic stratification', text:'In the same competitive world: will ordinary people, by 2050, irreversibly lose economic and political leverage to a narrow owner class, passing all three extreme-concentration tests?',
+     help:'Extreme means it passes all three tests. No outside rival: no state, company or coalition could resist or overturn the group. No inside check: elections, courts, a free press, strikes and refusing orders no longer constrain it. No way back: no plausible succession crisis, split, challenge or collapse could end it.',
+     lo:'Redistribution, democracy and new kinds of work have survived every earlier wave of automation.',
+     hi:'Once people’s labour isn’t needed, taxes and elections may stop binding those who own the machines.'},
+  W:{short:'AI-driven catastrophic war', text:'In the same competitive world, with rival AI-armed powers: will AI-driven escalation cause a global catastrophic war?',
+     lo:'Better AI advice can reduce miscalculation and strengthen deterrence.',
+     hi:'Machine-speed decisions and deference to AI recommendations can outrun human judgement.'},
+  I:{short:'AI-enabled catastrophic technology', text:'If transformative AI arrives (assume competition persists): will AI enable a technology, such as an engineered pandemic, that causes a global catastrophe before defences catch up?',
+     lo:'AI strengthens defence too, for example biosurveillance and fast vaccine design.',
+     hi:'AI widens access to dangerous know-how faster than governance can respond.'},
+  V:{short:'No recovery after catastrophe', text:'If a global catastrophe like that happens (an AI-driven war or an AI-enabled pandemic): will humanity never recover its long-term potential?',
+     lo:'Societies have recovered from great catastrophes before.',
+     hi:'Some weapons could be extinction-level, and a collapse could lock in a bad outcome.'},
+  O:{short:'Other routes', text:'Will there be an AI existential catastrophe by 2050 by some other route, including combinations of the above, or with AI that never reaches the transformative level?',
+     lo:'The eight scenario families cover essentially all published scenarios.',
+     hi:'The review that defines the families says they are not exhaustive.'}
+};
+const FAM = {
+  uni:{name:'Unilateral takeover', group:'take', col:'var(--brick)'},
+  many:{name:'Dispersed or coordinated takeover', group:'take', col:'color-mix(in srgb,var(--brick) 65%,var(--bg))'},
+  hand:{name:'Incremental handover', group:'struct', col:'var(--g1)'},
+  strat:{name:'Economic stratification', group:'struct', col:'color-mix(in srgb,var(--g1) 70%,var(--bg))'},
+  tot:{name:'Entrenched totalitarianism', group:'power', col:'var(--g2)'},
+  inv:{name:'Catastrophic invention', group:'misuse', col:'var(--g3)'},
+  war:{name:'Automated warfare', group:'misuse', col:'color-mix(in srgb,var(--g3) 60%,var(--bg))'},
+  other:{name:'Other routes', group:'other', col:'color-mix(in srgb,var(--g3) 35%,var(--bg))'}
+};
+const ARCH = {take:'Takeover worrier', struct:'Structural worrier', power:'Power-grab worrier', misuse:'Misuse worrier', other:'Unknown-unknowns worrier'};
+const ARCHNOTE = {take:'Most of your risk comes from AI systems taking control.', struct:'Most of your risk comes from slow, structural loss of human control.',
+  power:'Most of your risk comes from a human group seizing permanent power.', misuse:'Most of your risk comes from AI amplifying human destructive power.',
+  other:'Most of your risk comes from routes outside the eight published scenario families.'};
+
+/* ---------- state ---------- */
+const LS = 'pdoom-v1';
+const rid = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const fresh = () => ({id: rid(), started: new Date().toISOString(), step: 0, gut: null, meaning: [], period: null, a: {},
+  framingK: Math.random() < 0.5 ? 'fail' : 'succeed', order: shuffle(['A','H','E','W','I']),
+  gutAfter: null, why: '', name: '', field: '', save: true, saved: null});
+let S;
+try { S = JSON.parse(localStorage.getItem(LS)) || fresh(); } catch (e) { S = fresh(); }
+const persist = () => { try { localStorage.setItem(LS, JSON.stringify(S)); } catch (e) {} };
+const qOrder = () => ['T','U','M','K','R', ...S.order, 'V', 'O'];
+const steps = () => ['intro', 'defs', ...qOrder(), 'result', 'share'];
+
+/* ---------- maths ---------- */
+const LIM = Math.log(999);
+const posToP = s => 1 / (1 + Math.exp(-(-LIM + s / 1000 * 2 * LIM)));
+const pToPos = p => { p = Math.min(0.999, Math.max(0.001, p)); return Math.round((Math.log(p / (1 - p)) + LIM) / (2 * LIM) * 1000); };
+function fmt(p) {
+  const v = p * 100;
+  if (v < 0.1) return (v < 0.01 ? '<0.01' : v.toPrecision(1)) + '%';
+  if (v < 1) return String(+v.toPrecision(2)) + '%';
+  if (v < 10) return (+v.toFixed(1)) + '%';
+  if (v > 99 && v < 100) return (+v.toFixed(1)) + '%';
+  return Math.round(v) + '%';
+}
+function odds(p) {
+  if (p < 0.5) { const n = 1 / p; return 'about 1 in ' + (n < 20 ? n.toFixed(1).replace(/\.0$/, '') : Math.round(n).toLocaleString('en-GB')); }
+  return fmt(1 - p) + ' chance it doesn’t';
+}
+function params(a) {
+  const K = a.K == null ? null : (S.framingK === 'fail' ? a.K : 1 - a.K);
+  return {T:a.T, U:a.U, M:a.M, K, A:a.A, R:a.R, H:a.H, E:a.E, W:a.W, I:a.I, V:a.V, O:a.O};
+}
+function model(q, d = CONFIG.damping) {
+  let pdT = 0; const share = {};
+  for (const [uni, pu] of [[true, q.U], [false, 1 - q.U]]) for (const [s, pr] of [[1, q.R], [d, 1 - q.R]]) {
+    const haz = uni ? {uni: q.M * q.K, tot: q.A, inv: s * q.I * q.V}
+                    : {many: q.M * q.K, hand: s * q.H, strat: s * q.E, war: s * q.W * q.V, inv: s * q.I * q.V};
+    let surv = 1, tot = 0; const L = {};
+    for (const k in haz) { surv *= 1 - haz[k]; L[k] = haz[k] >= 1 ? 50 : -Math.log(1 - haz[k]); tot += L[k]; }
+    const w = q.T * pu * pr, pb = 1 - surv; pdT += w * pb;
+    for (const k in L) share[k] = (share[k] || 0) + (tot > 0 ? w * pb * L[k] / tot : 0);
+  }
+  share.other = q.O * (1 - pdT);
+  const f = q.R + (1 - q.R) * d;
+  const naive = q.T * q.M * q.K + q.T * q.U * q.A + q.T * (1 - q.U) * f * (q.H + q.E + q.W * q.V) + q.T * f * q.I * q.V + q.O;
+  return {p: 1 - (1 - pdT) * (1 - q.O), share, naive};
+}
+function crux(q) {
+  let best = null;
+  for (const k of Object.keys(q)) {
+    const lo = {...q, [k]: q[k] / 2}, hi = {...q, [k]: Math.min(0.99, q[k] * 2)};
+    const sw = model(hi).p - model(lo).p;
+    if (!best || sw > best.sw) best = {k, sw, lo: model(lo).p, hi: model(hi).p};
+  }
+  return best;
+}
+function results() {
+  const q = params(S.a), m = model(q), c = crux(q);
+  const groups = {};
+  for (const k in m.share) groups[FAM[k].group] = (groups[FAM[k].group] || 0) + m.share[k];
+  const top = Object.entries(groups).sort((x, y) => y[1] - x[1])[0][0];
+  const arch = m.p < 0.01 ? 'Sceptic' : ARCH[top];
+  return {q, ...m, c, groups, arch, top};
+}
+
+/* ---------- rendering helpers ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+const TICKS = [[.001,'0.1%'],[.01,'1%'],[.05,'5%',1],[.1,'10%'],[.25,'25%',1],[.5,'50%'],[.75,'75%',1],[.9,'90%'],[.95,'95%',1],[.99,'99%'],[.999,'99.9%']];
+function slider(key, val, label) {
+  const touched = val != null;
+  return `<div class="sl ${touched ? '' : 'untouched'}" data-key="${key}">
+    <output>${touched ? fmt(val) : '—'}</output><span class="odds">${touched ? odds(val) : 'Drag the scale or type a number'}</span>
+    <input type="range" min="0" max="1000" step="1" value="${touched ? pToPos(val) : 500}" aria-label="${esc(label)}">
+    <div class="ticks">${TICKS.map(([p, t, opt]) => `<span class="${opt ? 'opt' : ''}" style="left:${pToPos(p) / 10}%">${t}</span>`).join('')}</div>
+    <label class="typed">Or type it: <input type="number" min="0.01" max="99.99" step="any" inputmode="decimal" value="${touched ? +(val * 100).toPrecision(3) : ''}" aria-label="${esc(label)} in percent"> %</label>
+  </div>`;
+}
+function bindSlider(root, onChange) {
+  const box = root.querySelector('.sl'), r = box.querySelector('input[type=range]'), n = box.querySelector('input[type=number]');
+  const show = p => { box.classList.remove('untouched'); box.querySelector('output').textContent = fmt(p); box.querySelector('.odds').textContent = odds(p); onChange(p); };
+  r.addEventListener('input', () => { const p = posToP(+r.value); n.value = +(p * 100).toPrecision(3); show(p); });
+  r.addEventListener('pointerdown', () => { if (box.classList.contains('untouched')) { setTimeout(() => r.dispatchEvent(new Event('input')), 0); } });
+  n.addEventListener('input', () => { const v = parseFloat(n.value); if (!(v > 0 && v < 100)) return; const p = Math.min(.9999, Math.max(.0001, v / 100)); r.value = pToPos(p); show(p); });
+}
+function progress() {
+  const st = steps(), i = S.step, qs = qOrder();
+  $('#prog').innerHTML = qs.map((k, j) => { const at = st.indexOf(k); return `<i class="${i > at ? 'on' : i === at ? 'now' : ''} ${j === 5 || j === 11 ? 'gap' : ''}"></i>`; }).join('');
+  const name = st[i], qi = qs.indexOf(name);
+  $('#steplabel').textContent = qi >= 0 ? `Question ${qi + 1} of 12 · ${qi < 5 ? 'shared drivers' : qi < 11 ? 'scenarios' : 'other routes'}` : name === 'result' || name === 'share' ? 'Your result' : 'A 12-question calculator';
+}
+const navHtml = (canNext, nextLabel = 'Next') => `<div class="nav"><button class="ghost" id="back" ${S.step === 0 ? 'hidden' : ''}>Back</button><button id="next" ${canNext ? '' : 'disabled'}>${nextLabel}</button></div>`;
+function go(d) { S.step = Math.max(0, Math.min(steps().length - 1, S.step + d)); persist(); render(); window.scrollTo({top: 0}); }
+function bindNav() { const b = $('#back'), n = $('#next'); if (b) b.onclick = () => go(-1); if (n) n.onclick = () => go(1); }
+
+/* ---------- screens ---------- */
+function intro() {
+  const M = ['Everyone dies','Most people die','Humans permanently lose control','Civilisation collapses','A permanent bad lock-in','Nothing specific'];
+  const P = ['My lifetime','By 2050','By 2100','Ever','Not sure'];
+  $('#app').innerHTML = `<h1>What’s your p(Doom)?</h1>
+  <p>Most p(Doom) numbers are gut feelings, and people rarely mean the same thing by “doom”. This calculator breaks the question into 12 smaller ones, based on a systematic review of published AI catastrophe scenarios, and does the probability maths for you. It takes about seven minutes.</p>
+  <div class="panel"><h2>First, your gut number</h2><p class="quiet">Whatever “doom” means to you, and over whatever period. No thinking required.</p>
+  ${slider('gut', S.gut, 'Your gut p(Doom)')}
+  <h3>What did you mean by doom? <span class="quiet small">(pick any)</span></h3>
+  <div class="checks">${M.map(m => `<label><input type="checkbox" name="m" value="${m}" ${S.meaning.includes(m) ? 'checked' : ''}> ${m}</label>`).join('')}</div>
+  <h3>Over what period?</h3>
+  <div class="checks">${P.map(m => `<label><input type="radio" name="p" value="${m}" ${S.period === m ? 'checked' : ''}> ${m}</label>`).join('')}</div></div>
+  ${navHtml(S.gut != null, 'Start')}`;
+  bindSlider($('#app'), p => { S.gut = p; $('#next').disabled = false; persist(); });
+  document.querySelectorAll('input[name=m]').forEach(c => c.onchange = () => { S.meaning = [...document.querySelectorAll('input[name=m]:checked')].map(x => x.value); persist(); });
+  document.querySelectorAll('input[name=p]').forEach(c => c.onchange = () => { S.period = c.value; persist(); });
+  bindNav();
+}
+function defs() {
+  $('#app').innerHTML = `<div class="kicker">Before the questions</div><h1>One definition for everyone</h1>
+  <div class="def"><p><b>Doom</b> means an existential catastrophe caused or substantially enabled by AI, before 2050. That covers extinction, an unrecoverable collapse, permanent loss of human control to AI, and extreme human power concentration. Slow catastrophes count if they are irreversibly locked in by 2050.</p></div>
+  <div class="def"><p><b>Extreme power concentration</b> counts only if it passes all three tests. Milder concentration, however bad, does not count.</p>
+  <ol class="tests"><li><b>No outside rival.</b> No state, company or coalition could resist or overturn the group’s decisions.</li>
+  <li><b>No inside check.</b> Elections, courts, a free press, strikes and refusing orders no longer constrain it.</li>
+  <li><b>No way back.</b> No plausible succession crisis, split, challenge or collapse could end it.</li></ol>
+  <p class="quiet small" style="margin-top:10px">Who holds the power, and whether they call themselves benevolent, doesn’t matter.</p></div>
+  <div class="def"><p><b>Transformative AI</b> means AI that can do nearly all cognitive work, including AI research, better and more cheaply than human experts.</p></div>
+  <p class="quiet">Use the whole scale. 0.1% and 99.9% are perfectly good answers, and the scale makes them as easy to pick as 50%.</p>
+  ${navHtml(true, 'Begin the 12 questions')}`;
+  bindNav();
+}
+function question(k) {
+  const q = Q[k], alt = k === 'K' && S.framingK === 'succeed';
+  const text = alt ? q.textAlt : q.text, lo = alt ? q.hi : q.lo, hi = alt ? q.lo : q.hi;
+  const qi = qOrder().indexOf(k);
+  $('#app').innerHTML = `<div class="kicker">Question ${qi + 1} of 12</div><h2>${esc(text)}</h2>
+  ${q.help ? `<p class="quiet">${esc(q.help)}</p>` : ''}
+  <div class="panel">${slider(k, S.a[k], text)}</div>
+  <div class="cons"><div><b>Points to a lower answer</b>${esc(lo)}</div><div class="up"><b>Points to a higher answer</b>${esc(hi)}</div></div>
+  ${navHtml(S.a[k] != null)}`;
+  bindSlider($('#app'), p => { S.a[k] = p; $('#next').disabled = false; persist(); });
+  bindNav();
+}
+function result() {
+  const R = results(), entries = Object.entries(R.share).sort((x, y) => y[1] - x[1]), max = entries[0][1] || 1;
+  const fields = ['AI or machine-learning research','Other technology work','Academia (another field)','Policy or government','Forecasting','Student','Other','Prefer not to say'];
+  $('#app').innerHTML = `<div class="kicker">Your result</div>
+  <div class="big">${fmt(R.p)}</div>
+  <div class="arch">${R.arch}</div><p class="quiet">${R.p < 0.01 ? 'Your answers put the chance of AI doom by 2050 below 1%.' : ARCHNOTE[R.top]} At the start, your gut said ${fmt(S.gut)}.</p>
+  <div class="stack" role="img" aria-label="Share of your p(Doom) by scenario">${entries.map(([k, v]) => `<i style="width:${v / R.p * 100}%;background:${FAM[k].col}" title="${FAM[k].name}: ${fmt(v)}"></i>`).join('')}</div>
+  <div class="rows">${entries.map(([k, v]) => `<div class="row"><span><span class="sw" style="background:${FAM[k].col}"></span>${FAM[k].name}</span><span class="bar"><i style="width:${v / max * 100}%;background:${FAM[k].col}"></i></span><span class="v">${fmt(v)}</span></div>`).join('')}</div>
+  <div class="facts"><div><span class="quiet small">If you just added the scenarios up</span><b>${R.naive >= 1 ? 'Over 100%' : fmt(R.naive)}</b><span class="small quiet">${R.naive >= 1 ? 'Impossible for a probability. ' : ''}Scenarios overlap and share causes, so adding over-counts.</span></div>
+  <div><span class="quiet small">Your crux: ${Q[R.c.k].short}</span><b>${fmt(R.c.lo)} – ${fmt(R.c.hi)}</b><span class="small quiet">Your total if you halved or doubled this answer. No other answer moves it as much.</span></div></div>
+  <h3>Other people’s numbers</h3><p class="quiet small">Each uses a different definition and a 2100 horizon, which is exactly why p(Doom) numbers are hard to compare.</p>
+  <ul class="refs"><li><span>Superforecasters, AI-caused extinction by 2100 (XPT, 2022)</span><span>0.38%</span></li><li><span>Domain experts, AI-caused extinction by 2100 (XPT, 2022)</span><span>3%</span></li>
+  <li><span>AI researchers’ median, extinction or severe disempowerment (AI Impacts, 2023)</span><span>5%</span></li><li><span>Concerned group, existential catastrophe by 2100 (FRI, 2024)</span><span>20%</span></li><li><span>Sceptic group, the same question (FRI, 2024)</span><span>0.12%</span></li></ul>
+  <div class="panel"><h2>All things considered, what’s your number now?</h2><p class="quiet">Using the definition above. It’s fine if it differs from the calculation.</p>
+  ${slider('after', S.gutAfter, 'Your final p(Doom)')}
+  <h3><label for="why">Why does it differ from the calculation? <span class="quiet small">(optional)</span></label></h3><textarea id="why" maxlength="1000">${esc(S.why)}</textarea>
+  <h3><label for="name">Your name <span class="quiet small">(optional; leave blank to stay anonymous)</span></label></h3><input type="text" id="name" maxlength="80" autocomplete="name" value="${esc(S.name)}">
+  <h3><label for="field">Your background <span class="quiet small">(optional)</span></label></h3><select id="field"><option value="">Choose…</option>${fields.map(f => `<option ${S.field === f ? 'selected' : ''}>${f}</option>`).join('')}</select>
+  <h3>Your answers</h3><div class="choice">
+  <label><input type="radio" name="save" value="1" ${S.save ? 'checked' : ''}><span><b>Save my answers</b><small>They join the dataset on how people reason about AI risk. Your name is stored only if you entered one.</small></span></label>
+  <label><input type="radio" name="save" value="0" ${S.save ? '' : 'checked'}><span><b>Keep my answers private</b><small>Nothing leaves your browser.</small></span></label></div></div>
+  ${navHtml(true, 'Finish')}`;
+  bindSlider($('#app').querySelector('.panel'), p => { S.gutAfter = p; persist(); });
+  $('#why').oninput = e => { S.why = e.target.value; persist(); };
+  $('#name').oninput = e => { S.name = e.target.value; persist(); };
+  $('#field').onchange = e => { S.field = e.target.value; persist(); };
+  document.querySelectorAll('input[name=save]').forEach(c => c.onchange = () => { S.save = c.value === '1'; persist(); });
+  $('#back').onclick = () => go(-1);
+  $('#next').onclick = async () => { const b = $('#next'); b.disabled = true; b.textContent = S.save ? 'Saving…' : 'Finishing…'; S.saved = S.save ? await save(R) : 'private'; go(1); };
+}
+async function save(R) {
+  const rec = {id: S.id, version: CONFIG.version, created: new Date().toISOString(), started: S.started,
+    name: S.name.trim().slice(0, 80) || null, field: S.field || null,
+    gut_before: S.gut, gut_meaning: S.meaning, gut_period: S.period, gut_after: S.gutAfter, why: S.why.trim().slice(0, 1000) || null,
+    answers: S.a, framing_k: S.framingK, order: S.order, params: R.q,
+    result: {pdoom: R.p, naive: R.naive, shares: R.share, archetype: R.arch, crux: R.c.k}};
+  try {
+    const c = window.claude;
+    if (c && typeof c.use === 'function') {
+      const db = await c.use('db'), user = await c.use('user');
+      if (!db || !user) return 'unavailable';
+      await db.doc('responses/' + await user.id()).set(rec);
+      return 'saved';
+    }
+    if (!CONFIG.endpoint) return 'unavailable';
+    if (/^https:\/\/script\.google\.com\//.test(CONFIG.endpoint)) {
+      // Google Apps Script: a simple text/plain POST avoids a CORS preflight; the reply can't be read.
+      await fetch(CONFIG.endpoint, {method: 'POST', mode: 'no-cors', headers: {'content-type': 'text/plain;charset=utf-8'}, body: JSON.stringify(rec)});
+      return 'saved';
+    }
+    const r = await fetch(CONFIG.endpoint, {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify(rec)});
+    return r.ok ? 'saved' : 'failed';
+  } catch (e) { return 'failed'; }
+}
+function share() {
+  const R = results(), url = CONFIG.shareUrl || (location.origin + location.pathname);
+  const text = `My p(Doom) by 2050 comes out at ${fmt(R.p)} (${R.arch.toLowerCase()}). What's yours? A 12-question calculator built on a systematic review of AI catastrophe scenarios:`;
+  const e = encodeURIComponent, full = text + ' ' + url;
+  const links = [['X', `https://twitter.com/intent/tweet?text=${e(text)}&url=${e(url)}`], ['Bluesky', `https://bsky.app/intent/compose?text=${e(full)}`],
+    ['LinkedIn', `https://www.linkedin.com/sharing/share-offsite/?url=${e(url)}`], ['Facebook', `https://www.facebook.com/sharer/sharer.php?u=${e(url)}`],
+    ['Reddit', `https://www.reddit.com/submit?url=${e(url)}&title=${e(text)}`], ['WhatsApp', `https://wa.me/?text=${e(full)}`], ['Threads', `https://www.threads.net/intent/post?text=${e(full)}`]];
+  const status = {saved: 'Your answers are saved. Thank you.', private: 'Your answers were kept private. Nothing was sent.',
+    failed: 'Your answers couldn’t be saved just now. Your result below is unaffected.', unavailable: 'Saving isn’t switched on for this site yet. Your result below is unaffected.'}[S.saved] || '';
+  $('#app').innerHTML = `${status ? `<div class="status">${status}</div>` : ''}<h1>Spread better p(Doom) talk</h1>
+  <p>Share your number, and invite people to work theirs out with the same definition. Then the numbers can actually be compared.</p>
+  <div class="card"><div class="n">${fmt(R.p)}</div><p><b>My p(Doom) by 2050 · ${R.arch}</b></p><p>Biggest driver: ${FAM[Object.entries(R.share).sort((x, y) => y[1] - x[1])[0][0]].name.toLowerCase()}</p></div>
+  <div class="share">${links.map(([n, h]) => `<a class="btn" href="${h}" target="_blank" rel="noopener">${n}</a>`).join('')}<button id="copy">Copy text</button></div>
+  <p class="quiet small" id="copied" aria-live="polite">${esc(full)}</p>
+  <div class="nav"><button class="ghost" id="back">Change my answers</button><button class="ghost" id="restart">Start again</button></div>`;
+  $('#copy').onclick = async () => { try { await navigator.clipboard.writeText(full); $('#copy').textContent = 'Copied'; } catch (err) { $('#copy').textContent = 'Select the text below to copy'; } };
+  $('#back').onclick = () => { S.step = steps().indexOf('result'); S.saved = null; persist(); render(); };
+  $('#restart').onclick = () => { S = fresh(); persist(); render(); };
+}
+function render() {
+  const name = steps()[S.step]; progress();
+  if (name === 'intro') intro(); else if (name === 'defs') defs(); else if (name === 'result') result(); else if (name === 'share') share(); else question(name);
+}
+window.pdoomModel = model;
+render();
+}
+</script>
+</body>
+</html>

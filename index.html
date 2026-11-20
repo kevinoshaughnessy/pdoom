@@ -119,7 +119,7 @@ footer a{color:inherit}
 {
 /* ---------- configuration ---------- */
 const CONFIG = {
-  version: 'v0.7-2050',
+  version: 'v0.8-2050',
   shareUrl: 'https://kevinoshaughnessy.github.io/pdoom/', // public URL of the hosted page
   endpoint: 'https://script.google.com/macros/s/AKfycbxXdvh7lQj8yb6tLizSVYktE8i9808YNUtI_GWwW0kP-yIs0Yn5FRIGijsgcLL4Wkni2w/exec', // where answers are saved. GitHub Pages: your Google Apps Script web-app URL.
                               // Cloudflare Pages: '/api/submit'. Empty: saving is off. Ignored inside a claude.ai artifact.
@@ -314,10 +314,16 @@ function results() {
   const groups = {};
   for (const k in m.share) groups[FAM[k].group] = (groups[FAM[k].group] || 0) + m.share[k];
   const top = Object.entries(groups).sort((x, y) => y[1] - x[1])[0][0];
-  const arch = m.p < 0.01 ? 'Sceptic' : ARCH[top];
+  // Under 1% is an "Optimist". The person's final number decides this once they have given one.
+  const headline = S.gutAfter == null ? m.p : S.gutAfter, arch = headline < 0.01 ? 'Optimist' : ARCH[top];
   const sk = skipped();
   const skipLo = sk.length ? evaluate(sk.map(k => ({k, f: 0.5}))).p : null, skipHi = sk.length ? evaluate(sk.map(k => ({k, f: 2}))).p : null;
-  return {...m, c, groups, arch, top, skipped: sk, skipLo, skipHi};
+  return {...m, c, groups, arch, headline, top, skipped: sk, skipLo, skipHi};
+}
+
+function archNote(R) {
+  if (R.arch !== 'Optimist') return ARCHNOTE[R.top];
+  return S.gutAfter != null && S.gutAfter < 0.01 ? 'Your final number puts the chance of AI doom by 2050 below 1%.' : 'Your answers put the chance of AI doom by 2050 below 1%.';
 }
 
 /* ---------- rendering helpers ---------- */
@@ -434,7 +440,7 @@ function result() {
   const fields = ['AI or machine-learning research','Other technology work','Academia (another field)','Policy or government','Forecasting','Student','Other','Prefer not to say'];
   $('#app').innerHTML = `<div class="kicker">Your result</div>
   <div class="big">${fmt(R.p)}</div>
-  <div class="arch">${R.arch}</div><p class="quiet">${R.p < 0.01 ? 'Your answers put the chance of AI doom by 2050 below 1%.' : ARCHNOTE[R.top]} At the start, your gut said ${fmt(S.gut)}.</p>
+  <div class="arch" id="arch">${R.arch}</div><p class="quiet"><span id="archnote">${archNote(R)}</span> At the start, your gut said ${fmt(S.gut)}.</p>
   ${R.skipped.length ? `<div class="anchor"><b>You skipped ${R.skipped.length} question${R.skipped.length > 1 ? 's' : ''}</b>For ${R.skipped.length > 1 ? 'those' : 'it'}, the calculator used middle-of-the-road values: ${R.skipped.map(k => `${esc(lc(k === 'K' && S.framingK === 'succeed' ? Q.K.shortAlt : Q[k].short))} (${fmt(defaultRaw(k))})`).join(', ')}. If your answers had been half or double those values, your result would be between ${fmt(R.skipLo)} and ${fmt(R.skipHi)}.${R.skipped.length >= 6 ? ' With this many skipped, your result mostly reflects the defaults rather than your own views.' : ''}</div>` : ''}
   <div class="stack" role="img" aria-label="Share of your p(Doom) by scenario">${entries.map(([k, v]) => `<i style="width:${v / R.p * 100}%;background:${FAM[k].col}" title="${FAM[k].name}: ${fmt(v)}"></i>`).join('')}</div>
   <div class="rows">${entries.map(([k, v]) => `<div class="row"><span><span class="sw" style="background:${FAM[k].col}"></span>${FAM[k].name}</span><span class="bar"><i style="width:${v / max * 100}%;background:${FAM[k].col}"></i></span><span class="v">${fmt(v)}</span></div>`).join('')}</div>
@@ -454,7 +460,7 @@ function result() {
   <p class="quiet small">Read the <a href="privacy.html" target="_blank" rel="noopener">privacy notice</a> for how saved answers are used and how to have them deleted.</p>
   <p class="status" id="needchoice" role="alert" hidden>Please choose whether to save your answers or keep them private.</p></div>
   ${navHtml(true, 'Finish')}`;
-  bindSlider($('#app').querySelector('.panel'), p => { S.gutAfter = p; persist(); });
+  bindSlider($('#app').querySelector('.panel'), p => { S.gutAfter = p; persist(); const r = results(); $('#arch').textContent = r.arch; $('#archnote').textContent = archNote(r); });
   $('#why').oninput = e => { S.why = e.target.value; persist(); };
   $('#name').oninput = e => { S.name = e.target.value; persist(); };
   $('#field').onchange = e => { S.field = e.target.value; persist(); };
@@ -490,7 +496,8 @@ async function save(R) {
 }
 function share() {
   const R = results(), url = CONFIG.shareUrl || (location.origin + location.pathname);
-  const text = `My p(Doom) by 2050 comes out at ${fmt(R.p)} (${R.arch.toLowerCase()}). What's yours? A 12-question calculator built on a systematic review of AI catastrophe scenarios:`;
+  const own = S.gutAfter != null && fmt(S.gutAfter) !== fmt(R.p);
+  const text = `My p(Doom) by 2050 is ${fmt(R.headline)} (${R.arch.toLowerCase()})${own ? `; the calculator gave me ${fmt(R.p)}` : ''}. What's yours? A 12-question calculator built on a systematic review of AI catastrophe scenarios:`;
   const e = encodeURIComponent, full = text + ' ' + url;
   const links = [['X', `https://twitter.com/intent/tweet?text=${e(text)}&url=${e(url)}`], ['Bluesky', `https://bsky.app/intent/compose?text=${e(full)}`],
     ['LinkedIn', `https://www.linkedin.com/sharing/share-offsite/?url=${e(url)}`], ['Facebook', `https://www.facebook.com/sharer/sharer.php?u=${e(url)}`],
@@ -499,7 +506,7 @@ function share() {
     failed: 'Your answers couldn’t be saved just now. Your result below is unaffected.', unavailable: 'Saving isn’t switched on for this site yet. Your result below is unaffected.'}[S.saved] || '';
   $('#app').innerHTML = `${status ? `<div class="status">${status}</div>` : ''}<h1>Spread better p(Doom) talk</h1>
   <p>Share your number, and invite people to work theirs out with the same definition. Then the numbers can actually be compared.</p>
-  <div class="card"><div class="n">${fmt(R.p)}</div><p><b>My p(Doom) by 2050 · ${R.arch}</b></p><p>Biggest driver: ${FAM[Object.entries(R.share).sort((x, y) => y[1] - x[1])[0][0]].name.toLowerCase()}</p></div>
+  <div class="card"><div class="n">${fmt(R.headline)}</div><p><b>My p(Doom) by 2050 · ${R.arch}</b></p>${own ? `<p>The calculator gave me ${fmt(R.p)}</p>` : ''}<p>Biggest driver: ${FAM[Object.entries(R.share).sort((x, y) => y[1] - x[1])[0][0]].name.toLowerCase()}</p></div>
   <div class="share">${links.map(([n, h]) => `<a class="btn" href="${h}" target="_blank" rel="noopener">${n}</a>`).join('')}<button id="copy">Copy text</button></div>
   <p class="quiet small" id="copied" aria-live="polite">${esc(full)}</p>
   <div class="nav"><button class="ghost" id="back">Change my answers</button><button class="ghost" id="restart">Start again</button></div>`;

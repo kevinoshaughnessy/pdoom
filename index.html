@@ -86,6 +86,20 @@ button.ghost{background:transparent;color:var(--ink)}button:disabled{opacity:.35
 .torn{display:flex;gap:12px;align-items:flex-start;margin:14px 0 0;padding:12px 14px;border:1px dashed var(--g2);border-radius:4px;cursor:pointer}
 .torn:has(input:checked){border-style:solid;border-color:var(--brick);background:var(--brick-soft)}
 .torn input{width:20px;height:20px;margin-top:2px;accent-color:var(--brick);flex:none}.torn small{display:block;color:var(--quiet);font-size:14px}
+.readrow{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.dots{display:grid;grid-template-columns:repeat(10,10px);gap:3px;flex:none;margin-top:4px}.dots i{width:10px;height:10px;border-radius:50%;background:var(--rule)}.dots i.on{background:var(--brick)}
+.sl.untouched .dots{opacity:.5}
+.help{margin:14px 0 0;border:1px solid var(--rule);border-radius:6px;background:var(--panel)}
+.help summary{cursor:pointer;font-weight:700;padding:14px 18px;min-height:44px;list-style-position:inside}
+.help[open] summary{border-bottom:1px solid var(--rule)}.help>*:not(summary){margin-left:18px;margin-right:18px}
+.help>p:first-of-type{margin-top:14px}
+.bd{padding-left:20px;margin:6px 18px 0}.bd li{margin:0 0 6px;padding-top:8px}.bd li p{margin:0 0 4px;font-size:15px}
+.sl.mini output{font-size:26px}.sl.mini .odds{font-size:13px;margin:2px 0 4px}.sl.mini .typed{margin-top:6px}
+.sugg{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:14px 0;border-top:1px solid var(--ink);margin-top:6px}
+.sugg>span{flex:1 1 220px}.sugg b{font-size:22px;color:var(--brick)}.sugg button{min-height:44px;padding:8px 16px;font-size:15px}
+.anchor{border-left:3px solid var(--g2);padding:2px 0 2px 14px;margin-top:12px;margin-bottom:14px;font-size:15px}.anchor b{display:block;font-size:13px;color:var(--quiet);font-weight:500}
+button.link{background:none;border:0;color:var(--ink);text-decoration:underline;padding:0;min-height:44px;font-weight:500;margin-bottom:6px}
+@media(max-width:600px){.readrow{flex-direction:column}.dots{grid-template-columns:repeat(20,9px);gap:3px}.dots i{width:9px;height:9px}}
 .two>div+div{border-top:1px solid var(--rule);margin-top:18px;padding-top:4px}.wl{margin:8px 0 10px}
 .two .sl output{font-size:clamp(32px,6vw,44px)}
 .row.tw{grid-template-columns:minmax(0,1fr) 5.5em 5.5em}.row.tw.head{color:var(--quiet);font-size:13px}
@@ -111,7 +125,7 @@ footer a{color:inherit}
 {
 /* ---------- configuration ---------- */
 const CONFIG = {
-  version: 'v0.4-2050',
+  version: 'v0.5-2050',
   shareUrl: 'https://kevinoshaughnessy.github.io/pdoom/', // public URL of the hosted page
   endpoint: 'https://script.google.com/macros/s/AKfycbxXdvh7lQj8yb6tLizSVYktE8i9808YNUtI_GWwW0kP-yIs0Yn5FRIGijsgcLL4Wkni2w/exec', // where answers are saved. GitHub Pages: your Google Apps Script web-app URL.
                               // Cloudflare Pages: '/api/submit'. Empty: saving is off. Ignored inside a claude.ai artifact.
@@ -162,6 +176,61 @@ const Q = {
      lo:'The eight scenario families cover essentially all published scenarios.',
      hi:'The review that defines the families says they are not exhaustive.'}
 };
+/* "Help me think about this": smaller questions that combine into a suggested answer, plus a starting point from history.
+   combine: 'and' multiplies the steps; 'or' = first, or else second; 'K' = 1 - (noticed x corrected), times capable. */
+const HELP = {
+  T:{combine:'and', steps:['Will AI progress continue for most of the next 20 years without hitting a hard wall, such as running out of data, energy, money or ideas?',
+     'If it does, will that be enough for AI to do nearly all cognitive work, including AI research, as well as human experts?',
+     'If AI can do that, will it also be cheaper than human experts by 2050?'],
+     anchor:'In a 2023 survey of 2,778 AI researchers, the combined forecast gave a 50% chance that, by 2047, machines could do every task better and more cheaply than people.'},
+  U:{combine:'and', steps:['Will AI research become largely automated, so that the leading AI system improves much faster than humans alone could make it?',
+     'If so, will the leader pull far enough ahead that rivals can’t catch up by copying, stealing or buying their way back?',
+     'If so, will that lead turn into control of the physical world (the economy, the military), not just better software?'],
+     anchor:'The US had a monopoly on nuclear weapons from 1945 to 1949 and did not turn it into lasting dominance. No company has kept sole control of a general-purpose technology such as electricity or computing for long.'},
+  M:{combine:'and', steps:['Will developers build and widely deploy AI agents that pursue long-range goals on their own?',
+     'If so, will training sometimes give those systems goals somewhat different from what was intended?',
+     'When goals are off, will they include gaining power or avoiding shutdown, rather than being harmlessly odd?'],
+     anchor:'In 2024 tests, researchers found that some frontier models would, in contrived settings, mislead their overseers or act to avoid being retrained. These were set-ups, not real deployments.'},
+  K:{combine:'K', steps:['Before it’s too late, will humans notice that deployed AI is pursuing goals it shouldn’t?',
+     'If they notice, will they manage to shut it down or fix it, despite the cost and any resistance?',
+     'If it isn’t stopped, would the AI actually be able to take permanent control, rather than just cause damage?'],
+     anchor:'Serious flaws can hide in plain sight. The Heartbleed bug sat unnoticed for about two years in encryption software used across much of the web.'},
+  R:{combine:'and', steps:['Will the leading powers see AI as decisive for military and economic power, so that slowing down feels like losing?',
+     'If so, will they fail to agree on limits that can be checked, the way arms-control treaties are?',
+     'Without such a deal, will companies and countries keep pushing ahead rather than slowing down on their own?'],
+     anchor:'Rivals have agreed limits before: the Biological Weapons Convention (1972), nuclear arms-control treaties and the Montreal Protocol on the ozone layer (1987). Each took years, and checking compliance is harder for AI.'},
+  A:{combine:'and', steps:['Will the group controlling the decisive AI be small, such as one company’s leaders or one government, rather than a broad international body?',
+     'If so, will they use the advantage to remove rivals and checks, rather than share or restrain it?',
+     'If they try, will it last, with no succession crisis, split or revolt ever undoing it?'],
+     anchor:'No regime has ever ruled most of the world. Even the most durable dictatorships have depended on soldiers, officials and workers whose loyalty can break. AI could remove that dependence.'},
+  H:{combine:'and', steps:['Will AI systems be given authority over major decisions (company strategy, infrastructure, defence, policy) without a human approving each one?',
+     'If so, will people lose the skills and institutions needed to run things without AI?',
+     'If so, will taking control back become impossible, for example because anyone who did would be outcompeted?'],
+     anchor:'Most stock-market trades are already placed by algorithms. In the 2010 “flash crash”, about a trillion dollars of value briefly vanished within minutes, faster than people could react.'},
+  E:{combine:'and', steps:['By 2050, will AI and robots make most human labour economically unnecessary?',
+     'If so, will the gains end up owned by a narrow group, rather than shared through taxes, public ownership or dividends?',
+     'If so, will that group escape democratic control for good, passing all three extreme-concentration tests?'],
+     anchor:'In 1900 about 40% of American workers farmed; today it’s under 2%. Employment stayed high because new kinds of work appeared. The question is whether AI breaks that pattern.'},
+  W:{combine:'and', steps:['Will rival powers give AI systems real control over military decisions, including escalation, by 2050?',
+     'If so, will a crisis arise in which machine-speed decisions escalate faster than humans can stop them?',
+     'If so, will it become a global catastrophe, such as a large nuclear exchange, rather than a contained conflict?'],
+     anchor:'The Cold War had near-misses, including the Cuban Missile Crisis (1962) and a 1983 Soviet false alarm, when officer Stanislav Petrov chose not to report incoming missiles. Automation could remove that human pause.'},
+  I:{combine:'and', steps:['Will AI make it possible for a small group to create something like an engineered pandemic?',
+     'If so, will someone actually make and release one?',
+     'If so, will it cause a global catastrophe before detection, vaccines and other defences catch up?'],
+     anchor:'The 1918 flu killed an estimated 50 million people, a few percent of humanity. COVID-19 killed millions despite modern medicine. An engineered pathogen could spread faster or kill more.'},
+  V:{combine:'or', steps:['Would the catastrophe kill nearly everyone, rather than a large share of people?',
+     'If not, would survivors fail to rebuild a technological civilisation, or would a bad regime lock itself in during the chaos?'],
+     anchor:'The Black Death killed perhaps a third to a half of Europe’s population in the 1340s, and Europe recovered within a few centuries. No catastrophe in recorded history has stopped humanity’s long-run recovery.'},
+  O:{anchor:'This catches what the other questions miss: combinations (say, a war during a power grab), routes nobody has written about yet, and disasters caused by AI weaker than transformative AI. The review behind this quiz collected 95 published scenarios and says its eight families are not exhaustive.'}
+};
+function suggest(k, s) {
+  const h = HELP[k];
+  if (!h.steps || h.steps.some((_, i) => s[i] == null)) return null;
+  if (h.combine === 'or') return s[0] + (1 - s[0]) * s[1];
+  if (h.combine === 'K') { const fail = (1 - s[0] * s[1]) * s[2]; return S.framingK === 'fail' ? fail : 1 - fail; }
+  return s.reduce((x, y) => x * y, 1);
+}
 const FAM = {
   uni:{name:'Unilateral takeover', group:'take', col:'var(--brick)'},
   many:{name:'Dispersed or coordinated takeover', group:'take', col:'color-mix(in srgb,var(--brick) 65%,var(--bg))'},
@@ -184,7 +253,7 @@ const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { c
 const fresh = () => ({id: rid(), started: new Date().toISOString(), step: 0, gut: null, meaning: [], period: null, a: {},
   framingK: Math.random() < 0.5 ? 'fail' : 'succeed', order: shuffle(['A','H','E','W','I']),
   gutAfter: null, why: '', name: '', field: '', save: null, saved: null,
-  tornOn: {}, torn: {}, worry: null, together: true});
+  tornOn: {}, torn: {}, worry: null, together: true, bd: {}, used: {}, helpOpen: {}});
 let S;
 try { S = JSON.parse(localStorage.getItem(LS)) || fresh(); } catch (e) { S = fresh(); }
 S = {...fresh(), ...S};   // fills fields added in later versions
@@ -272,10 +341,14 @@ function results() {
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const TICKS = [[.001,'0.1%'],[.01,'1%'],[.05,'5%',1],[.1,'10%'],[.25,'25%',1],[.5,'50%'],[.75,'75%',1],[.9,'90%'],[.95,'95%',1],[.99,'99%'],[.999,'99.9%']];
-function slider(key, val, label) {
-  const touched = val != null;
-  return `<div class="sl ${touched ? '' : 'untouched'}" data-key="${key}">
-    <output>${touched ? fmt(val) : '—'}</output><span class="odds">${touched ? odds(val) : 'Drag the scale or type a number'}</span>
+// "In 35 of 100 futures": counts are easier to reason with than percentages.
+function futures(p) { const n = Math.round(p * 100); if (n >= 1) return `In about ${n} of 100 futures`; const m = Math.round(p * 1000); return m >= 1 ? `In about ${m} of 1,000 futures` : 'In fewer than 1 of 1,000 futures'; }
+const dots = p => { const n = p == null ? 0 : Math.round(p * 100); return `<div class="dots" aria-hidden="true">${Array.from({length: 100}, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</div>`; };
+function slider(key, val, label, mode = '') {
+  const touched = val != null, read = touched ? (mode === 'q' ? futures(val) : odds(val)) : 'Drag the scale or type a number';
+  return `<div class="sl ${mode} ${touched ? '' : 'untouched'}" data-key="${key}">
+    ${mode === 'q' ? `<div class="readrow"><div><output>${touched ? fmt(val) : '—'}</output><span class="odds">${read}</span></div>${dots(val)}</div>`
+      : `<output>${touched ? fmt(val) : '—'}</output><span class="odds">${read}</span>`}
     <input type="range" min="0" max="1000" step="1" value="${touched ? pToPos(val) : 500}" aria-label="${esc(label)}">
     <div class="ticks">${TICKS.map(([p, t, opt]) => `<span class="${opt ? 'opt' : ''}" style="left:${pToPos(p) / 10}%">${t}</span>`).join('')}</div>
     <label class="typed">Or type it: <input type="number" min="0.01" max="99.99" step="any" inputmode="decimal" value="${touched ? +(val * 100).toPrecision(3) : ''}" aria-label="${esc(label)} in percent"> %</label>
@@ -283,7 +356,10 @@ function slider(key, val, label) {
 }
 function bindSlider(root, onChange) {
   const box = root.classList.contains('sl') ? root : root.querySelector('.sl'), r = box.querySelector('input[type=range]'), n = box.querySelector('input[type=number]');
-  const show = p => { box.classList.remove('untouched'); box.querySelector('output').textContent = fmt(p); box.querySelector('.odds').textContent = odds(p); onChange(p); };
+  const q = box.classList.contains('q');
+  const show = p => { box.classList.remove('untouched'); box.querySelector('output').textContent = fmt(p); box.querySelector('.odds').textContent = q ? futures(p) : odds(p);
+    if (q) { const n = Math.round(p * 100); box.querySelectorAll('.dots i').forEach((d, i) => d.classList.toggle('on', i < n)); }
+    onChange(p); };
   r.addEventListener('input', () => { const p = posToP(+r.value); n.value = +(p * 100).toPrecision(3); show(p); });
   r.addEventListener('pointerdown', () => { if (box.classList.contains('untouched')) { setTimeout(() => r.dispatchEvent(new Event('input')), 0); } });
   n.addEventListener('input', () => { const v = parseFloat(n.value); if (!(v > 0 && v < 100)) return; const p = Math.min(.9999, Math.max(.0001, v / 100)); r.value = pToPos(p); show(p); });
@@ -341,18 +417,37 @@ function question(k) {
   const qi = qOrder().indexOf(k);
   const on = !!S.tornOn[k], t = S.torn[k] || (S.torn[k] = {lo: null, hi: null});
   const answered = () => on ? t.lo != null && t.hi != null : S.a[k] != null;
+  const H = HELP[k], bd = S.bd[k] || (S.bd[k] = []), sg = suggest(k, bd);
+  const helpHtml = `<details class="help" id="help" ${S.helpOpen[k] ? 'open' : ''}><summary>Help me think about this</summary>
+    ${H.steps ? `<p class="small quiet">Answer ${H.steps.length === 2 ? 'two' : 'three'} smaller questions. They combine into a suggested number that you can use or ignore.</p>
+    <ol class="bd">${H.steps.map((s, i) => `<li><p>${esc(s)}</p>${slider(k + '-s' + i, bd[i], s, 'mini')}</li>`).join('')}</ol>
+    <div class="sugg"><span>Suggested answer: <b id="sugg">${sg == null ? 'answer all the steps' : fmt(sg)}</b></span>
+    ${on ? `<button type="button" class="ghost use" data-w="lo" ${sg == null ? 'disabled' : ''}>Use for the hopeful world</button><button type="button" class="ghost use" data-w="hi" ${sg == null ? 'disabled' : ''}>Use for the worrying world</button>`
+      : `<button type="button" class="use" ${sg == null ? 'disabled' : ''}>Use this number</button>`}</div>
+    <p class="small quiet">Splitting a question into steps tends to pull the number down, because every step feels uncertain. If the suggestion seems too low, go with your sense of the whole question.</p>` : ''}
+    <div class="anchor"><b>A starting point</b>${esc(H.anchor)}</div>
+    <button type="button" class="link" id="tornlink">${on ? 'Go back to a single answer' : 'Still torn between two views? Give two answers instead'}</button></details>`;
   $('#app').innerHTML = `<div class="kicker">Question ${qi + 1} of 12</div><h2>${esc(text)}</h2>
   ${q.help ? `<p class="quiet">${esc(q.help)}</p>` : ''}
-  <label class="torn"><input type="checkbox" id="torn" ${on ? 'checked' : ''}><span><b>I’m torn between two views of the world</b>
-  <small>Give one answer for a more hopeful world and one for a more worrying world. Before your result, you’ll say how likely each world is.</small></span></label>
-  <div class="panel">${on ? `<div class="two"><div><h3 class="wl">In the more hopeful world</h3>${slider(k + '-lo', t.lo, text + ' (more hopeful world)')}</div>
-  <div><h3 class="wl">In the more worrying world</h3>${slider(k + '-hi', t.hi, text + ' (more worrying world)')}</div></div>` : slider(k, S.a[k], text)}</div>
+  <div class="panel">${on ? `<p class="small quiet" style="margin:0">You’re giving two answers. Before your result, you’ll say how likely each world is.</p>
+  <div class="two"><div><h3 class="wl">In the more hopeful world</h3>${slider(k + '-lo', t.lo, text + ' (more hopeful world)')}</div>
+  <div><h3 class="wl">In the more worrying world</h3>${slider(k + '-hi', t.hi, text + ' (more worrying world)')}</div></div>` : slider(k, S.a[k], text, 'q')}</div>
+  ${helpHtml}
   <div class="cons"><div><b>Points to a lower answer</b>${esc(lo)}</div><div class="up"><b>Points to a higher answer</b>${esc(hi)}</div></div>
   ${navHtml(answered())}`;
-  const boxes = document.querySelectorAll('#app .sl'), upd = () => { $('#next').disabled = !answered(); persist(); };
-  if (on) { bindSlider(boxes[0], p => { t.lo = p; upd(); }); bindSlider(boxes[1], p => { t.hi = p; upd(); }); }
-  else bindSlider(boxes[0], p => { S.a[k] = p; upd(); });
-  $('#torn').onchange = e => { S.tornOn[k] = e.target.checked; persist(); question(k); progress(); };
+  const main = document.querySelectorAll('#app .panel .sl'), upd = () => { $('#next').disabled = !answered(); persist(); };
+  if (on) { bindSlider(main[0], p => { t.lo = p; upd(); }); bindSlider(main[1], p => { t.hi = p; upd(); }); }
+  else bindSlider(main[0], p => { S.a[k] = p; upd(); });
+  document.querySelectorAll('#help .bd .sl').forEach((box, i) => bindSlider(box, p => {
+    bd[i] = p; const v = suggest(k, bd);
+    $('#sugg').textContent = v == null ? 'answer all the steps' : fmt(v);
+    document.querySelectorAll('#help .use').forEach(b => b.disabled = v == null); persist(); }));
+  document.querySelectorAll('#help .use').forEach(b => b.onclick = () => {
+    const v = suggest(k, bd); if (v == null) return;
+    if (b.dataset.w) t[b.dataset.w] = v; else S.a[k] = v;
+    S.used[k] = v; persist(); question(k); });   // the suggestion offered, kept even if the answer is then adjusted
+  $('#help').ontoggle = e => { S.helpOpen[k] = e.target.open; };
+  $('#tornlink').onclick = () => { S.tornOn[k] = !on; persist(); question(k); progress(); };
   bindNav();
 }
 function weigh() {
@@ -409,6 +504,7 @@ async function save(R) {
     name: S.name.trim().slice(0, 80) || null, field: S.field || null,
     gut_before: S.gut, gut_meaning: S.meaning, gut_period: S.period, gut_after: S.gutAfter, why: S.why.trim().slice(0, 1000) || null,
     answers: S.a, framing_k: S.framingK, order: S.order, params: R.q,
+    breakdown: Object.fromEntries(Object.entries(S.bd).filter(([, v]) => v.some(x => x != null))), used_suggestion: S.used,
     torn: Object.fromEntries(tornKeys().map(k => [k, S.torn[k]])), worry: R.torn ? S.worry : null, together: R.torn ? S.together : null,
     result: {pdoom: R.p, naive: R.naive, shares: R.share, archetype: R.arch, crux: R.c.k, range: R.torn ? {hopeful: R.pLo, worrying: R.pHi} : null}};
   try {

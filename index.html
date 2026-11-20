@@ -96,12 +96,13 @@ footer a{color:inherit}
 <main class="wrap" id="app" aria-live="polite"></main>
 <footer class="wrap">
   Built on Save et al. (2026), <a href="https://existentialriskobservatory.org/papers_and_reports/Existential_Risk_Scenarios_from_AI_A_Systematic_Review.pdf">Existential Risk Scenarios from AI: A Systematic Review</a>. The calculator combines your answers with a small Bayesian network; it does not assess the risk itself.
+  · <a href="privacy.html">Privacy notice</a>
 </footer>
 <script>
 {
 /* ---------- configuration ---------- */
 const CONFIG = {
-  version: 'v0.2-2050',
+  version: 'v0.3-2050',
   shareUrl: 'https://kevinoshaughnessy.github.io/pdoom/', // public URL of the hosted page
   endpoint: 'https://script.google.com/macros/s/AKfycbxXdvh7lQj8yb6tLizSVYktE8i9808YNUtI_GWwW0kP-yIs0Yn5FRIGijsgcLL4Wkni2w/exec', // where answers are saved. GitHub Pages: your Google Apps Script web-app URL.
                               // Cloudflare Pages: '/api/submit'. Empty: saving is off. Ignored inside a claude.ai artifact.
@@ -173,7 +174,7 @@ const rid = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) 
 const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const fresh = () => ({id: rid(), started: new Date().toISOString(), step: 0, gut: null, meaning: [], period: null, a: {},
   framingK: Math.random() < 0.5 ? 'fail' : 'succeed', order: shuffle(['A','H','E','W','I']),
-  gutAfter: null, why: '', name: '', field: '', save: true, saved: null});
+  gutAfter: null, why: '', name: '', field: '', save: null, saved: null});
 let S;
 try { S = JSON.parse(localStorage.getItem(LS)) || fresh(); } catch (e) { S = fresh(); }
 const persist = () => { try { localStorage.setItem(LS, JSON.stringify(S)); } catch (e) {} };
@@ -325,16 +326,18 @@ function result() {
   <h3><label for="name">Your name <span class="quiet small">(optional; leave blank to stay anonymous)</span></label></h3><input type="text" id="name" maxlength="80" autocomplete="name" value="${esc(S.name)}">
   <h3><label for="field">Your background <span class="quiet small">(optional)</span></label></h3><select id="field"><option value="">Choose…</option>${fields.map(f => `<option ${S.field === f ? 'selected' : ''}>${f}</option>`).join('')}</select>
   <h3>Your answers</h3><div class="choice">
-  <label><input type="radio" name="save" value="1" ${S.save ? 'checked' : ''}><span><b>Save my answers</b><small>They join the dataset on how people reason about AI risk. Your name is stored only if you entered one.</small></span></label>
-  <label><input type="radio" name="save" value="0" ${S.save ? '' : 'checked'}><span><b>Keep my answers private</b><small>Nothing leaves your browser.</small></span></label></div></div>
+  <label><input type="radio" name="save" value="1" ${S.save === true ? 'checked' : ''}><span><b>Save my answers</b><small>They join the dataset on how people reason about AI risk, kept for three years. Your name is stored only if you entered one.</small></span></label>
+  <label><input type="radio" name="save" value="0" ${S.save === false ? 'checked' : ''}><span><b>Keep my answers private</b><small>Nothing leaves your browser.</small></span></label></div>
+  <p class="quiet small">Read the <a href="privacy.html" target="_blank" rel="noopener">privacy notice</a> for how saved answers are used and how to have them deleted.</p>
+  <p class="status" id="needchoice" role="alert" hidden>Please choose whether to save your answers or keep them private.</p></div>
   ${navHtml(true, 'Finish')}`;
   bindSlider($('#app').querySelector('.panel'), p => { S.gutAfter = p; persist(); });
   $('#why').oninput = e => { S.why = e.target.value; persist(); };
   $('#name').oninput = e => { S.name = e.target.value; persist(); };
   $('#field').onchange = e => { S.field = e.target.value; persist(); };
-  document.querySelectorAll('input[name=save]').forEach(c => c.onchange = () => { S.save = c.value === '1'; persist(); });
+  document.querySelectorAll('input[name=save]').forEach(c => c.onchange = () => { S.save = c.value === '1'; $('#needchoice').hidden = true; persist(); });
   $('#back').onclick = () => go(-1);
-  $('#next').onclick = async () => { const b = $('#next'); b.disabled = true; b.textContent = S.save ? 'Saving…' : 'Finishing…'; S.saved = S.save ? await save(R) : 'private'; go(1); };
+  $('#next').onclick = async () => { if (S.save !== true && S.save !== false) { $('#needchoice').hidden = false; return; } const b = $('#next'); b.disabled = true; b.textContent = S.save ? 'Saving…' : 'Finishing…'; S.saved = S.save ? await save(R) : 'private'; go(1); };
 }
 async function save(R) {
   const rec = {id: S.id, version: CONFIG.version, created: new Date().toISOString(), started: S.started,
@@ -367,7 +370,7 @@ function share() {
   const links = [['X', `https://twitter.com/intent/tweet?text=${e(text)}&url=${e(url)}`], ['Bluesky', `https://bsky.app/intent/compose?text=${e(full)}`],
     ['LinkedIn', `https://www.linkedin.com/sharing/share-offsite/?url=${e(url)}`], ['Facebook', `https://www.facebook.com/sharer/sharer.php?u=${e(url)}`],
     ['Reddit', `https://www.reddit.com/submit?url=${e(url)}&title=${e(text)}`], ['WhatsApp', `https://wa.me/?text=${e(full)}`], ['Threads', `https://www.threads.net/intent/post?text=${e(full)}`]];
-  const status = {saved: 'Your answers are saved. Thank you.', private: 'Your answers were kept private. Nothing was sent.',
+  const status = {saved: `Your answers are saved. Thank you. Your response ID is <code>${esc(S.id)}</code>. Keep it if you might want your answers deleted later (see the <a href="privacy.html">privacy notice</a>).`, private: 'Your answers were kept private. Nothing was sent.',
     failed: 'Your answers couldn’t be saved just now. Your result below is unaffected.', unavailable: 'Saving isn’t switched on for this site yet. Your result below is unaffected.'}[S.saved] || '';
   $('#app').innerHTML = `${status ? `<div class="status">${status}</div>` : ''}<h1>Spread better p(Doom) talk</h1>
   <p>Share your number, and invite people to work theirs out with the same definition. Then the numbers can actually be compared.</p>

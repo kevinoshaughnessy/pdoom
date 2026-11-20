@@ -64,9 +64,9 @@ wrangler d1 execute pdoom --remote --json --command "SELECT payload FROM respons
 
 ## Before launch (both options)
 
-- **Privacy notice.** You collect optional names and free text. If anyone in the
-  UK or EU takes part, add a short notice: what's stored, why, for how long, and
-  how to ask for deletion.
+- **Privacy notice.** `privacy.html` is the UK GDPR notice (consent basis,
+  three-year retention, deletion by email with the response ID shown after
+  saving). Update it if the hosting, storage, purpose or retention changes.
 - **Spam.** Both back ends reject malformed and oversized posts. Anyone who reads
   the page source can find the save address, so expect the odd junk row and
   filter it out before analysis.

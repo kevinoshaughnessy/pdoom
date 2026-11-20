@@ -83,6 +83,13 @@ button.ghost{background:transparent;color:var(--ink)}button:disabled{opacity:.35
 .card{background:var(--ink);color:var(--bg);border-radius:6px;padding:24px;margin:18px 0}
 .card .n{font-size:56px;font-weight:800;line-height:1;color:var(--brick)}.card p{margin:8px 0 0;max-width:none}
 .status{padding:10px 14px;border-radius:4px;background:var(--brick-soft);font-size:15px;margin:0 0 16px}
+.torn{display:flex;gap:12px;align-items:flex-start;margin:14px 0 0;padding:12px 14px;border:1px dashed var(--g2);border-radius:4px;cursor:pointer}
+.torn:has(input:checked){border-style:solid;border-color:var(--brick);background:var(--brick-soft)}
+.torn input{width:20px;height:20px;margin-top:2px;accent-color:var(--brick);flex:none}.torn small{display:block;color:var(--quiet);font-size:14px}
+.two>div+div{border-top:1px solid var(--rule);margin-top:18px;padding-top:4px}.wl{margin:8px 0 10px}
+.two .sl output{font-size:clamp(32px,6vw,44px)}
+.row.tw{grid-template-columns:minmax(0,1fr) 5.5em 5.5em}.row.tw.head{color:var(--quiet);font-size:13px}
+.range{border-left:3px solid var(--brick);padding-left:14px}
 footer{border-top:1px solid var(--rule);padding:18px 0 40px;font-size:13px;color:var(--quiet)}
 footer a{color:inherit}
 @media(max-width:600px){.cons{grid-template-columns:minmax(0,1fr)}.row{grid-template-columns:minmax(0,1fr) 4.6em}.row .bar{grid-column:1/-1;order:3}
@@ -104,7 +111,7 @@ footer a{color:inherit}
 {
 /* ---------- configuration ---------- */
 const CONFIG = {
-  version: 'v0.3-2050',
+  version: 'v0.4-2050',
   shareUrl: 'https://kevinoshaughnessy.github.io/pdoom/', // public URL of the hosted page
   endpoint: 'https://script.google.com/macros/s/AKfycbxXdvh7lQj8yb6tLizSVYktE8i9808YNUtI_GWwW0kP-yIs0Yn5FRIGijsgcLL4Wkni2w/exec', // where answers are saved. GitHub Pages: your Google Apps Script web-app URL.
                               // Cloudflare Pages: '/api/submit'. Empty: saving is off. Ignored inside a claude.ai artifact.
@@ -123,7 +130,7 @@ const Q = {
   M:{short:'Power-seeking misalignment', text:'If transformative AI arrives: will some of the most capable systems pursue goals their developers didn’t intend, such as seeking power or resisting shutdown, once deployed at scale?',
      lo:'Intelligence doesn’t imply a drive to dominate. AI may stay tool-like, and alignment methods keep improving.',
      hi:'Power and self-preservation help with almost any goal, and some evaluations already report deceptive or self-preserving behaviour.'},
-  K:{short:'Humans fail to correct misaligned AI',
+  K:{short:'Humans fail to correct misaligned AI', shortAlt:'Humans notice and correct misaligned AI',
      text:'If misaligned, power-seeking AI is deployed: will humans fail to notice and correct it before losing control for good?',
      textAlt:'If misaligned, power-seeking AI is deployed: will humans notice and correct it before losing control for good?',
      lo:'Warning shots, AI systems monitoring other AI, and the chance that a takeover attempt doesn’t pay off for the AI.',
@@ -176,12 +183,16 @@ const rid = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) 
 const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const fresh = () => ({id: rid(), started: new Date().toISOString(), step: 0, gut: null, meaning: [], period: null, a: {},
   framingK: Math.random() < 0.5 ? 'fail' : 'succeed', order: shuffle(['A','H','E','W','I']),
-  gutAfter: null, why: '', name: '', field: '', save: null, saved: null});
+  gutAfter: null, why: '', name: '', field: '', save: null, saved: null,
+  tornOn: {}, torn: {}, worry: null, together: true});
 let S;
 try { S = JSON.parse(localStorage.getItem(LS)) || fresh(); } catch (e) { S = fresh(); }
+S = {...fresh(), ...S};   // fills fields added in later versions
 const persist = () => { try { localStorage.setItem(LS, JSON.stringify(S)); } catch (e) {} };
 const qOrder = () => ['T','U','M','K','R', ...S.order, 'V', 'O'];
-const steps = () => ['intro', 'defs', ...qOrder(), 'result', 'share'];
+const tornKeys = () => qOrder().filter(k => S.tornOn[k]);
+const anyTorn = () => tornKeys().length > 0;
+const steps = () => ['intro', 'defs', ...qOrder(), ...(anyTorn() ? ['weigh'] : []), 'result', 'share'];
 
 /* ---------- maths ---------- */
 const LIM = Math.log(999);
@@ -218,22 +229,43 @@ function model(q, d = CONFIG.damping) {
   const naive = q.T * q.M * q.K + q.T * q.U * q.A + q.T * (1 - q.U) * f * (q.H + q.E + q.W * q.V) + q.T * f * q.I * q.V + q.O;
   return {p: 1 - (1 - pdT) * (1 - q.O), share, naive};
 }
-function crux(q) {
+/* Torn answers: each torn question has a value in a more hopeful world (lo) and a more worrying world (hi).
+   "Together": the hopeful answers form one world and the worrying answers another, so the result is a
+   mixture of two model runs. "Separate": each question is uncertain on its own, so each torn answer is
+   averaged first and the model runs once. */
+function rawWorld(which) { const r = {...S.a}; for (const k of tornKeys()) r[k] = S.torn[k][which]; return r; }
+function evaluate(adj) {
+  const qL = params(rawWorld('lo')), qH = params(rawWorld('hi'));
+  if (adj) for (const q of [qL, qH]) q[adj.k] = adj.f < 1 ? q[adj.k] * adj.f : Math.min(0.99, q[adj.k] * adj.f);
+  if (!anyTorn()) return {...model(qL), q: qL};
+  const w = S.worry == null ? 0.5 : S.worry, mL = model(qL), mH = model(qH);
+  let m;
+  if (S.together || tornKeys().length < 2) {
+    const share = {};
+    for (const k in mL.share) share[k] = (1 - w) * mL.share[k] + w * mH.share[k];
+    m = {p: (1 - w) * mL.p + w * mH.p, share, naive: (1 - w) * mL.naive + w * mH.naive};
+  } else {
+    const qM = {};
+    for (const k in qL) qM[k] = (1 - w) * qL[k] + w * qH[k];
+    m = model(qM);
+  }
+  return {...m, q: {hopeful: qL, worrying: qH}, pLo: mL.p, pHi: mH.p};
+}
+function crux() {
   let best = null;
-  for (const k of Object.keys(q)) {
-    const lo = {...q, [k]: q[k] / 2}, hi = {...q, [k]: Math.min(0.99, q[k] * 2)};
-    const sw = model(hi).p - model(lo).p;
-    if (!best || sw > best.sw) best = {k, sw, lo: model(lo).p, hi: model(hi).p};
+  for (const k of ['T','U','M','K','R','A','H','E','W','I','V','O']) {
+    const lo = evaluate({k, f: 0.5}).p, hi = evaluate({k, f: 2}).p, sw = hi - lo;
+    if (!best || sw > best.sw) best = {k, sw, lo, hi};
   }
   return best;
 }
 function results() {
-  const q = params(S.a), m = model(q), c = crux(q);
+  const m = evaluate(), c = crux();
   const groups = {};
   for (const k in m.share) groups[FAM[k].group] = (groups[FAM[k].group] || 0) + m.share[k];
   const top = Object.entries(groups).sort((x, y) => y[1] - x[1])[0][0];
   const arch = m.p < 0.01 ? 'Sceptic' : ARCH[top];
-  return {q, ...m, c, groups, arch, top};
+  return {...m, c, groups, arch, top, torn: anyTorn()};
 }
 
 /* ---------- rendering helpers ---------- */
@@ -250,7 +282,7 @@ function slider(key, val, label) {
   </div>`;
 }
 function bindSlider(root, onChange) {
-  const box = root.querySelector('.sl'), r = box.querySelector('input[type=range]'), n = box.querySelector('input[type=number]');
+  const box = root.classList.contains('sl') ? root : root.querySelector('.sl'), r = box.querySelector('input[type=range]'), n = box.querySelector('input[type=number]');
   const show = p => { box.classList.remove('untouched'); box.querySelector('output').textContent = fmt(p); box.querySelector('.odds').textContent = odds(p); onChange(p); };
   r.addEventListener('input', () => { const p = posToP(+r.value); n.value = +(p * 100).toPrecision(3); show(p); });
   r.addEventListener('pointerdown', () => { if (box.classList.contains('untouched')) { setTimeout(() => r.dispatchEvent(new Event('input')), 0); } });
@@ -264,7 +296,7 @@ function progress() {
       : `<i class="${i === at ? 'now' : ''} ${gap}" aria-hidden="true"></i>`; }).join('');
   $('#prog').querySelectorAll('button').forEach(b => b.onclick = () => jump(+b.dataset.step));
   const name = st[i], qi = qs.indexOf(name);
-  $('#steplabel').textContent = qi >= 0 ? `Question ${qi + 1} of 12 · ${qi < 5 ? 'shared drivers' : qi < 11 ? 'scenarios' : 'other routes'}` : name === 'result' || name === 'share' ? 'Your result' : 'A 12-question calculator';
+  $('#steplabel').textContent = qi >= 0 ? `Question ${qi + 1} of 12 · ${qi < 5 ? 'shared drivers' : qi < 11 ? 'scenarios' : 'other routes'}` : name === 'weigh' ? 'Weighing your two views' : name === 'result' || name === 'share' ? 'Your result' : 'A 12-question calculator';
 }
 const navHtml = (canNext, nextLabel = 'Next') => `<div class="nav"><button class="ghost" id="back" ${S.step === 0 ? 'hidden' : ''}>Back</button><button id="next" ${canNext ? '' : 'disabled'}>${nextLabel}</button></div>`;
 // Jumping back from the result or share screen means the answers may change, so they need saving again.
@@ -307,12 +339,36 @@ function question(k) {
   const q = Q[k], alt = k === 'K' && S.framingK === 'succeed';
   const text = alt ? q.textAlt : q.text, lo = alt ? q.hi : q.lo, hi = alt ? q.lo : q.hi;
   const qi = qOrder().indexOf(k);
+  const on = !!S.tornOn[k], t = S.torn[k] || (S.torn[k] = {lo: null, hi: null});
+  const answered = () => on ? t.lo != null && t.hi != null : S.a[k] != null;
   $('#app').innerHTML = `<div class="kicker">Question ${qi + 1} of 12</div><h2>${esc(text)}</h2>
   ${q.help ? `<p class="quiet">${esc(q.help)}</p>` : ''}
-  <div class="panel">${slider(k, S.a[k], text)}</div>
+  <label class="torn"><input type="checkbox" id="torn" ${on ? 'checked' : ''}><span><b>I’m torn between two views of the world</b>
+  <small>Give one answer for a more hopeful world and one for a more worrying world. Before your result, you’ll say how likely each world is.</small></span></label>
+  <div class="panel">${on ? `<div class="two"><div><h3 class="wl">In the more hopeful world</h3>${slider(k + '-lo', t.lo, text + ' (more hopeful world)')}</div>
+  <div><h3 class="wl">In the more worrying world</h3>${slider(k + '-hi', t.hi, text + ' (more worrying world)')}</div></div>` : slider(k, S.a[k], text)}</div>
   <div class="cons"><div><b>Points to a lower answer</b>${esc(lo)}</div><div class="up"><b>Points to a higher answer</b>${esc(hi)}</div></div>
-  ${navHtml(S.a[k] != null)}`;
-  bindSlider($('#app'), p => { S.a[k] = p; $('#next').disabled = false; persist(); });
+  ${navHtml(answered())}`;
+  const boxes = document.querySelectorAll('#app .sl'), upd = () => { $('#next').disabled = !answered(); persist(); };
+  if (on) { bindSlider(boxes[0], p => { t.lo = p; upd(); }); bindSlider(boxes[1], p => { t.hi = p; upd(); }); }
+  else bindSlider(boxes[0], p => { S.a[k] = p; upd(); });
+  $('#torn').onchange = e => { S.tornOn[k] = e.target.checked; persist(); question(k); progress(); };
+  bindNav();
+}
+function weigh() {
+  const ks = tornKeys(), many = ks.length > 1;
+  $('#app').innerHTML = `<div class="kicker">Before your result</div><h1>Weigh your two views</h1>
+  <p>You were torn on ${ks.length} question${many ? 's' : ''}. These are your two answers.</p>
+  <div class="rows"><div class="row tw head"><span>Question</span><span class="v">Hopeful</span><span class="v">Worrying</span></div>
+  ${ks.map(k => `<div class="row tw"><span>${esc(k === 'K' && S.framingK === 'succeed' ? Q.K.shortAlt : Q[k].short)}</span><span class="v">${fmt(S.torn[k].lo)}</span><span class="v">${fmt(S.torn[k].hi)}</span></div>`).join('')}</div>
+  <div class="panel"><h2>How likely is it that the more worrying world is the real one?</h2><p class="quiet">50% means you can’t tell the two apart.</p>
+  ${slider('worry', S.worry, 'Chance the more worrying world is the real one')}</div>
+  ${many ? `<h3>Do your torn answers go together?</h3><div class="choice">
+  <label><input type="radio" name="tog" value="1" ${S.together ? 'checked' : ''}><span><b>Yes, they go together</b><small>If one of your worrying answers turns out right, the others probably do too. Your hopeful answers describe one world and your worrying answers another.</small></span></label>
+  <label><input type="radio" name="tog" value="0" ${S.together ? '' : 'checked'}><span><b>No, each could go either way on its own</b><small>Being right or wrong on one question tells you nothing about the others.</small></span></label></div>` : ''}
+  ${navHtml(S.worry != null, 'See my result')}`;
+  bindSlider($('#app').querySelector('.panel'), p => { S.worry = p; $('#next').disabled = false; persist(); });
+  document.querySelectorAll('input[name=tog]').forEach(c => c.onchange = () => { S.together = c.value === '1'; persist(); });
   bindNav();
 }
 function result() {
@@ -321,10 +377,11 @@ function result() {
   $('#app').innerHTML = `<div class="kicker">Your result</div>
   <div class="big">${fmt(R.p)}</div>
   <div class="arch">${R.arch}</div><p class="quiet">${R.p < 0.01 ? 'Your answers put the chance of AI doom by 2050 below 1%.' : ARCHNOTE[R.top]} At the start, your gut said ${fmt(S.gut)}.</p>
+  ${R.torn ? `<p class="range">Between your two views: <b>${fmt(R.pLo)}</b> in the more hopeful world and <b>${fmt(R.pHi)}</b> in the more worrying one. Your ${fmt(R.p)} weighs them by how likely you think each world is.</p>` : ''}
   <div class="stack" role="img" aria-label="Share of your p(Doom) by scenario">${entries.map(([k, v]) => `<i style="width:${v / R.p * 100}%;background:${FAM[k].col}" title="${FAM[k].name}: ${fmt(v)}"></i>`).join('')}</div>
   <div class="rows">${entries.map(([k, v]) => `<div class="row"><span><span class="sw" style="background:${FAM[k].col}"></span>${FAM[k].name}</span><span class="bar"><i style="width:${v / max * 100}%;background:${FAM[k].col}"></i></span><span class="v">${fmt(v)}</span></div>`).join('')}</div>
   <div class="facts"><div><span class="quiet small">If you just added the scenarios up</span><b>${R.naive >= 1 ? 'Over 100%' : fmt(R.naive)}</b><span class="small quiet">${R.naive >= 1 ? 'Impossible for a probability. ' : ''}Scenarios overlap and share causes, so adding over-counts.</span></div>
-  <div><span class="quiet small">Your crux: ${Q[R.c.k].short}</span><b>${fmt(R.c.lo)} – ${fmt(R.c.hi)}</b><span class="small quiet">Your total if you halved or doubled this answer. No other answer moves it as much.</span></div></div>
+  <div><span class="quiet small">Your crux: ${Q[R.c.k].short}</span><b>${fmt(R.c.lo)} – ${fmt(R.c.hi)}</b><span class="small quiet">Your total if you halved or doubled this answer${R.torn ? ' (both answers, where you were torn)' : ''}. No other answer moves it as much.</span></div></div>
   <h3>Other people’s numbers</h3><p class="quiet small">Each uses a different definition and a 2100 horizon, which is exactly why p(Doom) numbers are hard to compare.</p>
   <ul class="refs"><li><span>Superforecasters, AI-caused extinction by 2100 (XPT, 2022)</span><span>0.38%</span></li><li><span>Domain experts, AI-caused extinction by 2100 (XPT, 2022)</span><span>3%</span></li>
   <li><span>AI researchers’ median, extinction or severe disempowerment (AI Impacts, 2023)</span><span>5%</span></li><li><span>Concerned group, existential catastrophe by 2100 (FRI, 2024)</span><span>20%</span></li><li><span>Sceptic group, the same question (FRI, 2024)</span><span>0.12%</span></li></ul>
@@ -352,7 +409,8 @@ async function save(R) {
     name: S.name.trim().slice(0, 80) || null, field: S.field || null,
     gut_before: S.gut, gut_meaning: S.meaning, gut_period: S.period, gut_after: S.gutAfter, why: S.why.trim().slice(0, 1000) || null,
     answers: S.a, framing_k: S.framingK, order: S.order, params: R.q,
-    result: {pdoom: R.p, naive: R.naive, shares: R.share, archetype: R.arch, crux: R.c.k}};
+    torn: Object.fromEntries(tornKeys().map(k => [k, S.torn[k]])), worry: R.torn ? S.worry : null, together: R.torn ? S.together : null,
+    result: {pdoom: R.p, naive: R.naive, shares: R.share, archetype: R.arch, crux: R.c.k, range: R.torn ? {hopeful: R.pLo, worrying: R.pHi} : null}};
   try {
     const c = window.claude;
     if (c && typeof c.use === 'function') {
@@ -373,7 +431,7 @@ async function save(R) {
 }
 function share() {
   const R = results(), url = CONFIG.shareUrl || (location.origin + location.pathname);
-  const text = `My p(Doom) by 2050 comes out at ${fmt(R.p)} (${R.arch.toLowerCase()}). What's yours? A 12-question calculator built on a systematic review of AI catastrophe scenarios:`;
+  const text = `My p(Doom) by 2050 comes out at ${fmt(R.p)}${R.torn ? `, somewhere between ${fmt(R.pLo)} and ${fmt(R.pHi)} depending on which view of the world is right` : ''} (${R.arch.toLowerCase()}). What's yours? A 12-question calculator built on a systematic review of AI catastrophe scenarios:`;
   const e = encodeURIComponent, full = text + ' ' + url;
   const links = [['X', `https://twitter.com/intent/tweet?text=${e(text)}&url=${e(url)}`], ['Bluesky', `https://bsky.app/intent/compose?text=${e(full)}`],
     ['LinkedIn', `https://www.linkedin.com/sharing/share-offsite/?url=${e(url)}`], ['Facebook', `https://www.facebook.com/sharer/sharer.php?u=${e(url)}`],
@@ -382,7 +440,7 @@ function share() {
     failed: 'Your answers couldn’t be saved just now. Your result below is unaffected.', unavailable: 'Saving isn’t switched on for this site yet. Your result below is unaffected.'}[S.saved] || '';
   $('#app').innerHTML = `${status ? `<div class="status">${status}</div>` : ''}<h1>Spread better p(Doom) talk</h1>
   <p>Share your number, and invite people to work theirs out with the same definition. Then the numbers can actually be compared.</p>
-  <div class="card"><div class="n">${fmt(R.p)}</div><p><b>My p(Doom) by 2050 · ${R.arch}</b></p><p>Biggest driver: ${FAM[Object.entries(R.share).sort((x, y) => y[1] - x[1])[0][0]].name.toLowerCase()}</p></div>
+  <div class="card"><div class="n">${fmt(R.p)}</div><p><b>My p(Doom) by 2050 · ${R.arch}</b></p>${R.torn ? `<p>Range across my two views: ${fmt(R.pLo)} to ${fmt(R.pHi)}</p>` : ''}<p>Biggest driver: ${FAM[Object.entries(R.share).sort((x, y) => y[1] - x[1])[0][0]].name.toLowerCase()}</p></div>
   <div class="share">${links.map(([n, h]) => `<a class="btn" href="${h}" target="_blank" rel="noopener">${n}</a>`).join('')}<button id="copy">Copy text</button></div>
   <p class="quiet small" id="copied" aria-live="polite">${esc(full)}</p>
   <div class="nav"><button class="ghost" id="back">Change my answers</button><button class="ghost" id="restart">Start again</button></div>`;
@@ -392,7 +450,7 @@ function share() {
 }
 function render() {
   const name = steps()[S.step]; progress();
-  if (name === 'intro') intro(); else if (name === 'defs') defs(); else if (name === 'result') result(); else if (name === 'share') share(); else question(name);
+  if (name === 'intro') intro(); else if (name === 'defs') defs(); else if (name === 'weigh') weigh(); else if (name === 'result') result(); else if (name === 'share') share(); else question(name);
 }
 window.pdoomModel = model;
 render();
